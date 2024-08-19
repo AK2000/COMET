@@ -936,6 +936,11 @@ Value insertSparseTensorDeclOp(PatternRewriter & rewriter,
           /// do nothing!
           comet_debug() << " the tensor has use in AllocWorkspaceOp\n";
         }
+        else if (isa<indexTree::IndexTreeOp>(u1))
+        {
+          /// do nothing!
+          comet_debug() << " the tensor has use in a Index Tree\n";
+        }
         else
         {
           u1->dump();

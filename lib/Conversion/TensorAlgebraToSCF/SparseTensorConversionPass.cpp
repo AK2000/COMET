@@ -320,6 +320,27 @@ class ConvertSpTensorExtractOp
   }
 };
 
+class ConvertSpTensorGetCrd
+  : public OpConversionPattern<SpTensorGetCrd> {
+  using OpConversionPattern<SpTensorGetCrd>::OpConversionPattern;
+  ConvertSpTensorGetCrd(MLIRContext * context)
+    : OpConversionPattern(context) {}
+
+  LogicalResult matchAndRewrite(SpTensorGetCrd op, OpAdaptor adaptor, ConversionPatternRewriter &rewriter) const final {
+    auto opAdaptor = llvm::cast<SpTensorGetCrdAdaptor>(adaptor);
+    if(!llvm::isa<SparseTensorType>(opAdaptor.getTensor().getType())){
+      return failure();
+    }
+
+    SparseTensor sp_tensor;
+    if(!unpack_sparse_tensor(opAdaptor.getTensor(), sp_tensor)) {
+      return failure();
+    }
+    rewriter.replaceOpWithNewOp<tensor::ExtractOp>(op, op.getType(), sp_tensor.dims[op.getDim().value()].crd, op.getIdx());
+    return success();
+  }
+};
+
 class ConvertSpTensorInsertCrd
     : public OpConversionPattern<SpTensorInsertCrd> {
   using OpConversionPattern<SpTensorInsertCrd>::OpConversionPattern;
@@ -897,7 +918,7 @@ void mlir::comet::populateSparseTensorConversionPatterns(MLIRContext *context, R
     });
 
   patterns.add<PrintOpLowering, GetTimeLowering, PrintElapsedTimeLowering>(typeConverter, context);
-  patterns.add<ConvertSpTensorConstructOp, ConvertSpTensorInsertOp, ConvertSpTensorExtractOp, ConvertSpTensorInsertCrd, ConvertSpTensorGetDimSize, ConvertSpTensorFindPos>(typeConverter, context);
+  patterns.add<ConvertSpTensorConstructOp, ConvertSpTensorInsertOp, ConvertSpTensorExtractOp, ConvertSpTensorGetCrd, ConvertSpTensorInsertCrd, ConvertSpTensorGetDimSize, ConvertSpTensorFindPos>(typeConverter, context);
   patterns.add<ConvertAllocWorkspaceOp, ConvertWorkspaceGetNNZ, ConvertWorkspaceGetCrds, ConvertWorkspaceTensorInsertOp, ConvertWorkspaceTensorExtractOp, ConvertWorkspaceGetDimSize, ConvertWorkspaceClearOp>(typeConverter, context);
 }
 
