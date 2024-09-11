@@ -242,30 +242,31 @@ struct ConvertSparseTensorOp
           dim_format.push_back(format_unk);
         } else if(llvm::isa<indexTree::IndexTreeSparseDomainOp>(domain_op))
         {
-          auto sparse_domain_op = llvm::cast<indexTree::IndexTreeSparseDomainOp>(domain_op);
-          Value dim_size = sparse_domain_op.getDimSize();
-          Value pos_size = sparse_domain_op.getPosSize();
-          Value crd_size = sparse_domain_op.getCrdSize();
+          assert(false && "Output array that shares a sparse dimension with input array is not yet implemented.");
+          // auto sparse_domain_op = llvm::cast<indexTree::IndexTreeSparseDomainOp>(domain_op);
+          // Value dim_size = sparse_domain_op.getDimSize();
+          // Value pos_size = sparse_domain_op.getPosSize();
+          // Value crd_size = sparse_domain_op.getCrdSize();
 
-          Value pos = sparse_domain_op.getPos();
-          Value crd = sparse_domain_op.getCrd();
-          Value pos_tile = rewriter.create<memref::AllocOp>(loc, MemRefType::get({0,}, index_type));
-          Value crd_tile = rewriter.create<memref::AllocOp>(loc, MemRefType::get({0,}, index_type));
+          // Value pos = sparse_domain_op.getPos();
+          // Value crd = sparse_domain_op.getCrd();
+          // Value pos_tile = rewriter.create<memref::AllocOp>(loc, MemRefType::get({0,}, index_type));
+          // Value crd_tile = rewriter.create<memref::AllocOp>(loc, MemRefType::get({0,}, index_type));
 
-          arrays.push_back(pos);
-          arrays.push_back(crd);
-          arrays.push_back(rewriter.create<bufferization::ToTensorOp>(loc, pos_tile, rewriter.getUnitAttr(), rewriter.getUnitAttr()));
-          arrays.push_back(rewriter.create<bufferization::ToTensorOp>(loc, crd_tile, rewriter.getUnitAttr(), rewriter.getUnitAttr()));
+          // arrays.push_back(pos);
+          // arrays.push_back(crd);
+          // arrays.push_back(rewriter.create<bufferization::ToTensorOp>(loc, pos_tile, rewriter.getUnitAttr(), rewriter.getUnitAttr()));
+          // arrays.push_back(rewriter.create<bufferization::ToTensorOp>(loc, crd_tile, rewriter.getUnitAttr(), rewriter.getUnitAttr()));
 
-          array_sizes.push_back(pos_size);
-          array_sizes.push_back(crd_size);
-          array_sizes.push_back(zero);
-          array_sizes.push_back(zero);
+          // array_sizes.push_back(pos_size);
+          // array_sizes.push_back(crd_size);
+          // array_sizes.push_back(zero);
+          // array_sizes.push_back(zero);
 
-          dim_sizes.push_back(dim_size);
-          nnz = crd_size;
-          dim_format.push_back(format_compressed);
-          dim_format.push_back(format_unk);
+          // dim_sizes.push_back(dim_size);
+          // nnz = crd_size;
+          // dim_format.push_back(format_compressed);
+          // dim_format.push_back(format_unk);
         } else
           return failure();
       } else if(llvm::isa<indexTree::SymbolicDomainType>(domain.getType()))
@@ -368,7 +369,7 @@ struct ConvertSymbolicDomainsPass
 
     typeConverter.addSourceMaterialization(
       [](OpBuilder &builder, indexTree::SymbolicDomainType resultType, ValueRange inputs,
-          Location loc) -> Optional<Value> {
+          Location loc) {
         assert(inputs.size() == 6);
         Value value = builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs)->getResult(0);
         return value;
@@ -376,7 +377,7 @@ struct ConvertSymbolicDomainsPass
 
     typeConverter.addArgumentMaterialization(
       [](OpBuilder &builder, indexTree::SymbolicDomainType resultType, ValueRange inputs,
-          Location loc) -> Optional<Value> {
+          Location loc) {
         assert(inputs.size() == 6);
         Value value = builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs)->getResult(0);
         return value;

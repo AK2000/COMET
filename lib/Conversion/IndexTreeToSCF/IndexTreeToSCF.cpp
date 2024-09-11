@@ -33,6 +33,8 @@
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/Index/IR/IndexOps.h"
+#include "mlir/Dialect/Index/IR/IndexAttrs.h"
+#include "mlir/Dialect/Index/IR/IndexDialect.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/Math/IR/Math.h"
@@ -310,12 +312,12 @@ namespace
     else if (semiringSecond == "minxy")
     {
       Value cmp = builder.create<CmpFOp>(loc, CmpFPredicate::OLT, Input0, Input1);
-      elementWiseResult = builder.create<SelectOp>(loc, cmp, Input0, Input1);
+      elementWiseResult = builder.create<arith::SelectOp>(loc, cmp, Input0, Input1);
     }
     else if (semiringSecond == "max")
     {
       Value cmp = builder.create<CmpFOp>(loc, CmpFPredicate::OGT, Input0, Input1);
-      elementWiseResult = builder.create<SelectOp>(loc, cmp, Input0, Input1);
+      elementWiseResult = builder.create<arith::SelectOp>(loc, cmp, Input0, Input1);
     }
     else if (semiringSecond == "ne")
     {
@@ -362,12 +364,12 @@ namespace
     else if (semiringFirst == "minxy")
     {
       Value cmp = builder.create<CmpFOp>(loc, CmpFPredicate::OLT, Input0, Input1);
-      reduceResult = builder.create<SelectOp>(loc, cmp, Input0, Input1);
+      reduceResult = builder.create<arith::SelectOp>(loc, cmp, Input0, Input1);
     }
     else if (semiringFirst == "max")
     {
       Value cmp = builder.create<CmpFOp>(loc, CmpFPredicate::OGT, Input0, Input1);
-      reduceResult = builder.create<SelectOp>(loc, cmp, Input0, Input1);
+      reduceResult = builder.create<arith::SelectOp>(loc, cmp, Input0, Input1);
     }
     else if (semiringFirst == "land")
     {
@@ -402,7 +404,14 @@ namespace
     return reduceResult;
   }
 
-  class LoopInfo {
+  class IndexVar {
+    public:
+      virtual Value getCrd(IRRewriter& rewriter) = 0;
+      virtual Value getPos(Value tensor, uint32_t dim) = 0;
+      virtual ~IndexVar(){};
+  };
+
+  class LoopInfo : public IndexVar {
     protected:
       SmallVector<Value> currentInputs;
       ValueRange results;
@@ -414,8 +423,6 @@ namespace
       LoopInfo(ValueRange inputs, ValueRange outputs, Operation* body, IRMapping& ir_map):
         currentInputs(inputs), results(outputs), loopBody(body), map(ir_map) {}
 
-      virtual Value getCrd(IRRewriter& rewriter) = 0;
-      virtual Value getPos(Value tensor, uint32_t dim) = 0;
       virtual void updateOutput(IRRewriter& rewriter, uint32_t idx, Value newOutput) = 0;
       virtual ~LoopInfo(){};
 
@@ -424,7 +431,7 @@ namespace
       virtual ValueRange getResults() {return results;}
   };
 
-  class SentinelLoopInfo : LoopInfo {
+  class SentinelLoopInfo : public LoopInfo {
     private:
       indexTree::YieldOp terminator;
     public:
@@ -439,11 +446,11 @@ namespace
       virtual Value getPos(Value tensor, uint32_t dim) override {return nullptr;}
       virtual void updateOutput(IRRewriter& rewriter, uint32_t idx, Value newOutput) override {
         currentInputs[idx] = newOutput;
-        rewriter.updateRootInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
+        rewriter.modifyOpInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
       }
   };
 
-  class DenseLoopInfo : LoopInfo {
+  class DenseLoopInfo : public LoopInfo {
     private:
       Value inductionVar;
       scf::YieldOp terminator;
@@ -491,11 +498,11 @@ namespace
 
       void updateOutput(IRRewriter& rewriter, uint32_t idx, Value newOutput) override {
         currentInputs[idx] = newOutput;
-        rewriter.updateRootInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
+        rewriter.modifyOpInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
       }
   };
 
-  class SparseLoopInfo : LoopInfo {
+  class SparseLoopInfo : public LoopInfo {
     private:
       Value inductionVar;
       scf::YieldOp terminator;
@@ -512,39 +519,80 @@ namespace
         auto loc = domain_op->getLoc();
         auto sparse_domain = cast<IndexTreeSparseDomainOp>(domain_op);
         auto index_type = rewriter.getIndexType();
+        auto context = domain_op->getContext();
 
-        Value start_idx = sparse_domain.getParent();
-        if(!start_idx){
-          start_idx = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(0));
+        scf::ForOp for_loop;
+        scf::YieldOp yield_op;
+        Value inductionVar;
+        if(sparse_domain.getRegular()){
+
+          Value zero = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(0));
+          Value step = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(1));
+          for_loop = rewriter.create<scf::ForOp>(loc, zero, sparse_domain.getMaxNnz(), step, inputs);
+          rewriter.setInsertionPointToStart(for_loop.getBody());
+          Value start_idx = sparse_domain.getParent();
+          if(!start_idx){
+            start_idx = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(0));
+            // TODO: If parent is not defined, we should iterate over entire crd array
+          }
+          Value pos = rewriter.create<SpTensorGetPos>(loc, RankedTensorType::get({ShapedType::kDynamic,}, index_type), sparse_domain.getTensor(), sparse_domain.getDimAttr());
+          Value inc = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(1));
+          Value end_idx = rewriter.create<arith::AddIOp>(loc, index_type, start_idx, inc);
+          Value lb = rewriter.create<tensor::ExtractOp>(loc, index_type, pos, start_idx);
+          Value ub = rewriter.create<tensor::ExtractOp>(loc, index_type, pos, end_idx);
+          inductionVar =  rewriter.create<index::AddOp>(loc, index_type, for_loop.getInductionVar(), lb);
+          Value cond = rewriter.create<index::CmpOp>(
+            loc, 
+            rewriter.getI1Type(), 
+            index::IndexCmpPredicateAttr::get(context, index::IndexCmpPredicate::SLT), 
+            inductionVar, 
+            ub
+          );
+
+
+          SmallVector<Type> if_types;
+          for(Value input : inputs){
+            if_types.push_back(input.getType());
+          }
+          auto if_op = rewriter.create<scf::IfOp>(loc, if_types, cond, true);
+          rewriter.setInsertionPointToStart(if_op.elseBlock());
+          rewriter.create<scf::YieldOp>(loc, for_loop.getRegionIterArgs());
+
+          rewriter.setInsertionPointToStart(if_op.thenBlock());
+          yield_op = rewriter.create<scf::YieldOp>(loc, for_loop.getRegionIterArgs());
+          rewriter.setInsertionPointAfter(if_op);
+          rewriter.create<scf::YieldOp>(loc, if_op.getResults());
+        } else {
+          Value start_idx = sparse_domain.getParent();
+          if(!start_idx){
+            start_idx = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(0));
+            // TODO: If parent is not defined, we should iterate over entire crd array
+          }
+
+          Value pos = rewriter.create<SpTensorGetPos>(loc, RankedTensorType::get({ShapedType::kDynamic,}, index_type), sparse_domain.getTensor(), sparse_domain.getDimAttr());
+          Value inc = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(1));
+          Value end_idx = rewriter.create<arith::AddIOp>(loc, index_type, start_idx, inc);
+          Value lb = rewriter.create<tensor::ExtractOp>(loc, index_type, pos, start_idx);
+          Value ub = rewriter.create<tensor::ExtractOp>(loc, index_type, pos, end_idx);
+          Value step = rewriter.create<arith::ConstantOp>(loc, rewriter.getIndexType(), 
+                                                          rewriter.getIndexAttr(1));
+          for_loop = rewriter.create<scf::ForOp>(loc, lb, ub, step, inputs);
+          inductionVar = for_loop.getInductionVar();
+
+          
+          rewriter.setInsertionPointToStart(for_loop.getBody());
+          yield_op = rewriter.create<scf::YieldOp>(loc, for_loop.getRegionIterArgs());
+          rewriter.setInsertionPointAfter(for_loop);
         }
-
-        Value inc = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(1));
-        Value end_idx = rewriter.create<arith::AddIOp>(loc, index_type, start_idx, inc);
-        Value lb = rewriter.create<tensor::ExtractOp>(loc, index_type, sparse_domain.getPos(), start_idx);
-        Value ub = rewriter.create<tensor::ExtractOp>(loc, index_type, sparse_domain.getPos(), end_idx);
-        Value step = rewriter.create<arith::ConstantOp>(loc, rewriter.getIndexType(), 
-                                                        rewriter.getIndexAttr(1));
-        scf::ForOp for_loop = rewriter.create<scf::ForOp>(loc, lb, ub, step, inputs);
-
         IRMapping map;
-        unsigned init_arg_idx = 0;
-        for(Value init_arg : inputs){
-          map.map(init_arg, for_loop.getRegionIterArg(init_arg_idx));
-          init_arg_idx += 1;
-        }
-        
-        rewriter.setInsertionPointToStart(for_loop.getBody());
-        auto yield_op = rewriter.create<scf::YieldOp>(loc, for_loop.getRegionIterArgs());
-        rewriter.setInsertionPointAfter(for_loop);
-
-        return new SparseLoopInfo(ValueRange(for_loop.getRegionIterArgs()), for_loop.getResults(), yield_op, map, for_loop.getInductionVar(), yield_op, sparse_domain.getTensor(), sparse_domain.getDim());
+        return new SparseLoopInfo(ValueRange(for_loop.getRegionIterArgs()), for_loop.getResults(), yield_op, map, inductionVar, yield_op, sparse_domain.getTensor(), sparse_domain.getDim());
       }
 
       Value getCrd(IRRewriter& rewriter) override {
         if(crd != nullptr) return crd;
         auto loc = controlTensor.getLoc();
         SparseTensorType tt = cast<SparseTensorType>(controlTensor.getType());
-        crd = rewriter.create<SpTensorGetCrd>(loc, rewriter.getIndexType(), controlTensor, inductionVar, rewriter.getI32IntegerAttr(dim));
+        crd = rewriter.create<SpTensorGetCrd>(loc, rewriter.getIndexType(), controlTensor, inductionVar, rewriter.getUI32IntegerAttr(dim));
         return crd;
       }
 
@@ -565,11 +613,11 @@ namespace
 
       void updateOutput(IRRewriter& rewriter, uint32_t idx, Value newOutput) override {
         currentInputs[idx] = newOutput;
-        rewriter.updateRootInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
+        rewriter.modifyOpInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
       }
   };
 
-  class SingletonLoopInfo : LoopInfo {
+  class SingletonLoopInfo : public LoopInfo {
     private:
       Value inductionVar;
       Value crd;
@@ -604,7 +652,7 @@ namespace
       
   };
 
-  class WorkspaceLoopInfo : LoopInfo {
+  class WorkspaceLoopInfo : public LoopInfo {
     private:
       Value inductionVar;
       scf::YieldOp terminator;
@@ -645,7 +693,7 @@ namespace
         if(crd != nullptr) return crd;
         auto loc = workspaceTensor.getLoc();
         WorkspaceType tt = cast<WorkspaceType>(workspaceTensor.getType());
-        crd = rewriter.create<SpTensorGetCrd>(loc, rewriter.getIndexType(), workspaceTensor, inductionVar, rewriter.getI32IntegerAttr(0));
+        crd = rewriter.create<SpTensorGetCrd>(loc, rewriter.getIndexType(), workspaceTensor, inductionVar, rewriter.getUI32IntegerAttr(0));
         return crd;
       }
 
@@ -656,11 +704,11 @@ namespace
 
       void updateOutput(IRRewriter& rewriter, uint32_t idx, Value newOutput) override {
         currentInputs[idx] = newOutput;
-        rewriter.updateRootInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
+        rewriter.modifyOpInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
       }
   };
 
-  class IntersectionLoopInfo : LoopInfo {
+  class IntersectionLoopInfo : public LoopInfo {
     private:
       Value inductionVar;
       Value crd;
@@ -709,7 +757,8 @@ namespace
         for(Value domain : domains)
         {
           IndexTreeSparseDomainOp sparse_domain = llvm::cast<IndexTreeSparseDomainOp>(domain.getDefiningOp());
-          TensorFormatEnum format = (TensorFormatEnum)sparse_domain.getFormat();
+          SparseTensorType tt = cast<SparseTensorType>(sparse_domain.getTensor().getType());
+          TensorFormatEnum format = (TensorFormatEnum)tt.getFormat()[2 * sparse_domain.getDim()];
           switch(format)
           {
             case TensorFormatEnum::CN:
@@ -724,9 +773,10 @@ namespace
               if(!start_idx){
                 start_idx = rewriter.create<arith::ConstantOp>(loc, index_type, rewriter.getIndexAttr(0));
               }
+              Value pos = rewriter.create<SpTensorGetPos>(loc, RankedTensorType::get({ShapedType::kDynamic,}, index_type), sparse_domain.getTensor(), sparse_domain.getDimAttr());
               Value end_idx = rewriter.create<arith::AddIOp>(loc, index_type, start_idx, inc);
-              Value start = rewriter.create<tensor::ExtractOp>(loc, index_type, sparse_domain.getPos(), start_idx);
-              Value end = rewriter.create<tensor::ExtractOp>(loc, index_type, sparse_domain.getPos(), end_idx);
+              Value start = rewriter.create<tensor::ExtractOp>(loc, index_type, pos, start_idx);
+              Value end = rewriter.create<tensor::ExtractOp>(loc, index_type, pos, end_idx);
               loop_args.push_back(start);
               before = rewriter.saveInsertionPoint();
 
@@ -741,7 +791,7 @@ namespace
 
               crd_idx = body_block->addArgument(start.getType(), loc);
               rewriter.setInsertionPointToStart(body_block);
-              Value array_crd = rewriter.create<tensor::ExtractOp>(loc, index_type, sparse_domain.getCrd(), crd_idx);
+              Value array_crd = rewriter.create<SpTensorGetCrd>(loc, index_type, sparse_domain.getTensor(), crd_idx, nullptr);
               array_crds.push_back(array_crd);
 
               tensor_access_map.insert(std::make_pair(
@@ -859,7 +909,7 @@ namespace
 
       void updateOutput(IRRewriter& rewriter, uint32_t idx, Value newOutput) override {
         currentInputs[idx] = newOutput;
-        rewriter.updateRootInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
+        rewriter.modifyOpInPlace(terminator, [&](){terminator.setOperand(idx, newOutput);});
       }
   };
 
@@ -1064,7 +1114,9 @@ namespace
           return DenseLoopInfo::build(op, rewriter, parent_info->getInputs());
         })
         .Case<IndexTreeSparseDomainOp>([&](IndexTreeSparseDomainOp op) {
-          switch((TensorFormatEnum)op.getFormat()){
+          SparseTensorType tt = cast<SparseTensorType>(op.getTensor().getType());
+          TensorFormatEnum format = (TensorFormatEnum)tt.getFormat()[2 * op.getDim()];
+          switch(format){
             case TensorFormatEnum::CN:
             case TensorFormatEnum::CU:
               return SparseLoopInfo::build(op, rewriter, parent_info->getInputs());

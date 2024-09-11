@@ -175,7 +175,7 @@ namespace mlir
                           Value dynamic_init)
     {
       [[maybe_unused]] auto lowerBound = builder.create<ConstantIndexOp>(loc, 0);
-      MemRefType resultMemTy = alloc_op.getDefiningOp()->getResult(0).getType().cast<MemRefType>();
+      MemRefType resultMemTy = cast<MemRefType>(alloc_op.getDefiningOp()->getResult(0).getType());
       std::vector<Value> cur_indices;
       std::vector<int64_t> cur_memref;
 
@@ -313,12 +313,12 @@ namespace mlir
       /// Find summation indices
       for (const auto &map : indexMaps)
       {
-        auto affineMap = map.cast<AffineMapAttr>().getValue();
+        auto affineMap = cast<AffineMapAttr>(map).getValue();
         std::vector<int64_t> perm;
         for (size_t i = 0; i < affineMap.getNumResults(); i++)
         {
           auto expr = affineMap.getResult(i);
-          perm.push_back(expr.cast<AffineDimExpr>().getPosition());
+          perm.push_back(cast<AffineDimExpr>(expr).getPosition());
         }
 
         allPerms.push_back(perm);
@@ -337,13 +337,13 @@ namespace mlir
         comet_vdump(map);
         std::vector<int64_t> perm;
 
-        if (auto arrayattr = map.dyn_cast<ArrayAttr>())
+        if (auto arrayattr = dyn_cast<ArrayAttr>(map))
         {
           comet_debug() << " ";
           for (auto n : arrayattr)
           {
             comet_debug() << " ";
-            if (IntegerAttr i = n.dyn_cast<IntegerAttr>())
+            if (IntegerAttr i = dyn_cast<IntegerAttr>(n))
             {
               comet_debug() << " " << i.getInt() << "\n";
               perm.push_back(i.getInt());
@@ -519,7 +519,7 @@ namespace mlir
       /// format with each input matrix: ["CSR", "D", "D"] SpMM
       for (unsigned int i = 0; i < opFormatsArrayAttr.size(); i++)
       {
-        std::string formats_str(opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue());
+        std::string formats_str(cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue());
         unsigned int tensorDims = allPerms[i].size();
 
         comet_debug() << "format_str: " << formats_str << ", tensorDims: " << tensorDims << "\n";
@@ -618,16 +618,16 @@ namespace mlir
       {
         comet_debug() << " ";
         /// std::string formats_str;
-        if (opFormatsArrayAttr[i].dyn_cast<mlir::StringAttr>())
+        if (dyn_cast<mlir::StringAttr>(opFormatsArrayAttr[i]))
         {
           comet_debug() << " yes ";
         }
-        else if (mlir::ArrayAttr formatArrayAttr = opFormatsArrayAttr[i].dyn_cast<mlir::ArrayAttr>())
+        else if (mlir::ArrayAttr formatArrayAttr = dyn_cast<mlir::ArrayAttr>(opFormatsArrayAttr[i]))
         {
           comet_debug() << " yes " << formatArrayAttr.size() << " ";
           for (unsigned long j = 0; j < formatArrayAttr.size(); j++)
           {
-            if (mlir::StringAttr format = formatArrayAttr[j].dyn_cast<mlir::StringAttr>())
+            if (mlir::StringAttr format = dyn_cast<mlir::StringAttr>(formatArrayAttr[j]))
             {
               std::string formats_str(format.getValue());
               comet_debug() << " " << formats_str << " ";
@@ -1450,7 +1450,7 @@ namespace mlir
       std::vector<std::vector<bool>> mapping;
       for (unsigned int m = 0; m < perms.size(); m++)
       {
-        ArrayAttr aa = perms[m].dyn_cast<mlir::ArrayAttr>();
+        ArrayAttr aa = dyn_cast<mlir::ArrayAttr>(perms[m]);
         std::vector<bool> p;
         for (unsigned int n = 0; n < aa.size(); n++)
         {
@@ -1467,12 +1467,12 @@ namespace mlir
       std::vector<std::vector<int>> perms_int;
       for (unsigned int m = 0; m < perms.size(); m++)
       {
-        ArrayAttr aa = perms[m].dyn_cast<mlir::ArrayAttr>();
+        ArrayAttr aa = dyn_cast<mlir::ArrayAttr>(perms[m]);
         std::vector<int> p;
         for (unsigned int n = 0; n < aa.size(); n++)
         {
-          p.push_back(aa[n].cast<mlir::IntegerAttr>().getInt());
-          comet_debug() << " convertArrayAttrIntTo2DVector:" << aa[n].cast<mlir::IntegerAttr>().getInt() << "\n";
+          p.push_back(cast<mlir::IntegerAttr>(aa[n]).getInt());
+          comet_debug() << " convertArrayAttrIntTo2DVector:" << cast<mlir::IntegerAttr>(aa[n]).getInt() << "\n";
         }
         perms_int.push_back(p);
       }
@@ -1516,11 +1516,11 @@ namespace mlir
       std::vector<std::vector<std::string>> formats_str;
       for (unsigned int m = 0; m < formats.size(); m++)
       {
-        ArrayAttr aa = formats[m].dyn_cast<mlir::ArrayAttr>();
+        ArrayAttr aa = dyn_cast<mlir::ArrayAttr>(formats[m]);
         std::vector<std::string> p;
         for (unsigned int n = 0; n < aa.size(); n++)
         {
-          std::string format_str(aa[n].cast<mlir::StringAttr>().getValue());
+          std::string format_str(cast<mlir::StringAttr>(aa[n]).getValue());
           p.push_back(format_str);
           comet_debug() << " convertArrayAttrStrTo2DVector:" << format_str << "\n";
         }
@@ -2050,11 +2050,11 @@ namespace mlir
       auto max_idx = cast<ConstantIndexOp>(range.getMax().getDefiningOp());
       auto step_idx = cast<ConstantIndexOp>(range.getStep().getDefiningOp());
 
-      auto min = min_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
+      auto min = cast<mlir::IntegerAttr>(min_idx.getValue()).getValue().getSExtValue();
       ;
-      auto max = max_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
+      auto max = cast<mlir::IntegerAttr>(max_idx.getValue()).getValue().getSExtValue();
       ;
-      auto step = step_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
+      auto step = cast<mlir::IntegerAttr>(step_idx.getValue()).getValue().getSExtValue();
       ;
       return ((max - min) / step);
     }
@@ -2109,8 +2109,8 @@ namespace mlir
       auto rhs1AlphaAttr = rhs1Tensor.getDefiningOp()->getAttr("__alpha__");
       auto rhs2AlphaAttr = rhs2Tensor.getDefiningOp()->getAttr("__alpha__");
 
-      alpha *= rhs1AlphaAttr.cast<FloatAttr>().getValueAsDouble();
-      alpha *= rhs2AlphaAttr.cast<FloatAttr>().getValueAsDouble();
+      alpha *= cast<FloatAttr>(rhs1AlphaAttr).getValueAsDouble();
+      alpha *= cast<FloatAttr>(rhs2AlphaAttr).getValueAsDouble();
 
       unsigned idx = 0;
       for (auto lbl : rhs1Labels)
@@ -2320,7 +2320,7 @@ namespace mlir
         /// DenseElementsAttr denseAttr = constOp.getValue();
         /// auto attr = *(denseAttr.getAttributeValues().begin()); //GK changed
         auto attr = constOp.getValueAttrName();
-        auto f64Attr = attr.cast<FloatAttr>();
+        auto f64Attr = cast<FloatAttr>(attr);
         alpha *= f64Attr.getValueAsDouble();
         is_lhs_constant = true;
       }
@@ -2399,7 +2399,7 @@ namespace mlir
         /// DenseElementsAttr denseAttr = constOp.getValue();
         /// auto attr = *(denseAttr.getAttributeValues().begin());
         auto attr = constOp.getValueAttrName();
-        auto f64Attr = attr.cast<FloatAttr>();
+        auto f64Attr = cast<FloatAttr>(attr);
         alpha *= f64Attr.getValueAsDouble();
         is_rhs_constant = true;
       }
@@ -2565,7 +2565,7 @@ namespace mlir
           comet_debug() << "\n";
           auto constOp = cast<tensorAlgebra::DenseConstantOp>(lhsOp);
           auto attr = constOp.getValueAttrName();
-          auto f64Attr = attr.cast<FloatAttr>();
+          auto f64Attr = cast<FloatAttr>(attr);
           alpha *= f64Attr.getValueAsDouble();
           is_lhs_constant = true;
         }
@@ -2645,7 +2645,7 @@ namespace mlir
           comet_debug() << "\n";
           auto constOp = cast<tensorAlgebra::DenseConstantOp>(rhsOp);
           auto attr = constOp.getValueAttrName();
-          auto f64Attr = attr.cast<FloatAttr>();
+          auto f64Attr = cast<FloatAttr>(attr);
           alpha *= f64Attr.getValueAsDouble();
           is_rhs_constant = true;
           comet_debug() << "\n";
@@ -2731,7 +2731,7 @@ namespace mlir
       return inputInductionVars;
     }
 
-    std::vector<Value> createInductionVarAffine(std::vector<AffineForOp> affineloops,
+    std::vector<Value> createInductionVarAffine(std::vector<affine::AffineForOp> affineloops,
                                                 std::vector<int64_t> indexIterateOrder,
                                                 SmallVector<ReassociationIndices> inputPerm)
     {
@@ -2755,7 +2755,7 @@ namespace mlir
         ReassociationIndices indices;
         for (unsigned i = 0, e = map.getNumResults(); i < e; i++)
         {
-          unsigned pos = map.getResult(i).cast<AffineDimExpr>().getPosition();
+          unsigned pos = cast<AffineDimExpr>(map.getResult(i)).getPosition();
           indices.push_back(pos);
         }
         reassociation.push_back(indices);

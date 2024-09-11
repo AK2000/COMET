@@ -96,7 +96,7 @@ namespace
 
 struct TransformSparseOutput : public OpRewritePattern<IndexTreeComputeOp> {
   TransformSparseOutput(MLIRContext *context)
-    : OpRewritePattern<IndexTreeComputeOp>(context, /*benefit=*/0.5) {}
+    : OpRewritePattern<IndexTreeComputeOp>(context, /*benefit=*/ 1) {}
 
   mlir::LogicalResult
   matchAndRewrite(IndexTreeComputeOp compute_op, mlir::PatternRewriter &rewriter) const override {
@@ -253,7 +253,7 @@ struct TransformSparseOutput : public OpRewritePattern<IndexTreeComputeOp> {
     auto newOp = rewriter.create<IndexTreeOp>(loc, tree_types, tree_args);
     rewriter.inlineRegionBefore(tree_op.getRegion(), newOp.getRegion(), newOp.getRegion().end());
     indexTree::YieldOp yield = cast<indexTree::YieldOp>(newOp.getRegion().getBlocks().front().getTerminator());
-    rewriter.updateRootInPlace(yield, [&]() {
+    rewriter.modifyOpInPlace(yield, [&]() {
       yield->insertOperands(yield->getNumOperands(), ValueRange{workspace});
     });
     for(unsigned i = 0; i < tree_op.getNumResults(); i++){

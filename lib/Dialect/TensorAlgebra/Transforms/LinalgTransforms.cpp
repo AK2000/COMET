@@ -33,10 +33,10 @@
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Utils/Utils.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
-#include "mlir/Dialect/Linalg/TransformOps/LinalgTransformOps.h"
 #include "mlir/Dialect/SCF/Transforms/TileUsingInterface.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
+#include "mlir/Dialect/Utils/StaticValueUtils.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -217,7 +217,7 @@ namespace
         return failure();
 
       FailureOr<scf::SCFTilingResult> tilingResult =
-          scf::tileUsingSCFForOp(rewriter, op, options);
+          scf::tileUsingSCF(rewriter, op, options);
       if (failed(tilingResult))
         return rewriter.notifyMatchFailure(op, "failed to tile operation");
 
@@ -265,7 +265,7 @@ static void addPatternForTiling(MLIRContext *context,
                                 ArrayRef<int64_t> interchange = {})
 {
   scf::SCFTilingOptions tilingOptions;
-  tilingOptions.setTileSizes(tileSizes).setInterchange(interchange);
+  tilingOptions.setTileSizes(getAsIndexOpFoldResult(context, tileSizes)).setInterchange(interchange);
   LinalgTransformationFilter filter(StringAttr::get(context, filterName),
                                     StringAttr::get(context, updatedFilterName));
   patterns.add<LinalgTilingLoops>(context, tilingOptions, filter);
@@ -330,7 +330,7 @@ static SmallVector<Type, 4> extractOperandTypes(Operation *op)
     /// The underlying descriptor type (e.g. LLVM) does not have layout
     /// information. Canonicalizing the type at the level of std when going into
     /// a library call avoids needing to introduce DialectCastOp.
-    if (auto memrefType = type.dyn_cast<MemRefType>())
+    if (auto memrefType = dyn_cast<MemRefType>(type))
       result.push_back(makeStridedLayoutDynamic(memrefType));
     else
       result.push_back(type);
@@ -347,15 +347,15 @@ createTypeCanonicalizedMemRefOperands(OpBuilder &b, Location loc,
   res.reserve(operands.size());
   for (auto op : operands)
   {
-    auto memrefType = op.getType().dyn_cast<MemRefType>();
+    auto memrefType = dyn_cast<MemRefType>(op.getType());
     if (!memrefType)
     {
       res.push_back(op);
       continue;
     }
-    Value cast =
+    Value cast_op =
         b.create<memref::CastOp>(loc, makeStridedLayoutDynamic(memrefType), op);
-    res.push_back(cast);
+    res.push_back(cast_op);
   }
   return res;
 }
@@ -486,21 +486,21 @@ struct OptDenseTranspose : public ConversionPattern
     comet_debug() << " Input Type:\n";
     comet_vdump(inputType);
     auto inputMemref = op->getOperand(0);
-    auto inputRank = inputType.cast<mlir::MemRefType>().getRank();
+    auto inputRank = cast<mlir::MemRefType>(inputType).getRank();
     auto outputMemref = op->getOperand(1);
 
-    std::vector<AffineForOp> loops;
+    std::vector<affine::AffineForOp> loops;
     std::vector<int64_t> indexIterateOrder;
     for (int64_t rank = 0; rank < inputRank; rank++)
     {
       indexIterateOrder.push_back(rank);
-      int64_t upperBound = inputType.cast<mlir::MemRefType>().getDimSize(rank);
+      int64_t upperBound = cast<mlir::MemRefType>(inputType).getDimSize(rank);
       if (upperBound == ShapedType::kDynamic)
       {
         assert(false && "TODO: This dimension is a dynamic size");
       }
       /// create for loops
-      auto loop = rewriter.create<AffineForOp>(loc, 0, upperBound, 1);
+      auto loop = rewriter.create<affine::AffineForOp>(loc, 0, upperBound, 1);
       loops.push_back(loop);
       comet_vdump(loop);
       rewriter.setInsertionPointToStart(loop.getBody());
@@ -589,7 +589,7 @@ struct OptDenseTranspose : public ConversionPattern
               /// k = (i,j]. k is unsigned, should be >= 0. use k-1, so k>=1
               while (k > 0 && k > i)
               {
-                mlir::interchangeLoops(loops[currentOrder[k - 1]], loops[currentOrder[k]]);
+                mlir::affine::interchangeLoops(loops[currentOrder[k - 1]], loops[currentOrder[k]]);
                 std::swap(currentOrder[k - 1], currentOrder[k]);
                 k--;
               }
@@ -599,7 +599,7 @@ struct OptDenseTranspose : public ConversionPattern
         }
       }
 
-      std::vector<AffineForOp> newLoops;
+      std::vector<affine::AffineForOp> newLoops;
       for (unsigned i = 0; i < currentOrder.size(); i++)
       {
         newLoops.push_back(loops[currentOrder[i]]);
@@ -614,8 +614,8 @@ struct OptDenseTranspose : public ConversionPattern
         {
           tileSizes.push_back(tile_size);
         }
-        SmallVector<AffineForOp, 6> tiledNest;
-        if (failed(mlir::tilePerfectlyNested(newLoops, tileSizes, &tiledNest)))
+        SmallVector<affine::AffineForOp, 6> tiledNest;
+        if (failed(mlir::affine::tilePerfectlyNested(newLoops, tileSizes, &tiledNest)))
           return failure();
 
         comet_vdump(tiledNest[0]);
@@ -624,7 +624,7 @@ struct OptDenseTranspose : public ConversionPattern
         if (seperate_tiles)
         {
           auto intraTileLoops =
-              MutableArrayRef<AffineForOp>(tiledNest).drop_front(newLoops.size());
+              MutableArrayRef<affine::AffineForOp>(tiledNest).drop_front(newLoops.size());
           if (failed(separateFullTiles(intraTileLoops)))
             return failure();
         }
@@ -655,7 +655,7 @@ namespace
       comet_debug() << "OptDenseTransposePass : public PassWrapper<OptDenseTransposePass, FunctionPass>\n";
       func::FuncOp func = getOperation();
       ConversionTarget target(getContext());
-      target.addLegalDialect<ArithDialect, AffineDialect, memref::MemRefDialect>();
+      target.addLegalDialect<ArithDialect, affine::AffineDialect, memref::MemRefDialect>();
       RewritePatternSet patterns(&getContext());
       patterns.insert<OptDenseTranspose>(&getContext(), tile_size, seperate_tiles);
 

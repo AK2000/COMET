@@ -447,7 +447,7 @@ Value insertSparseTensorDeclOp(PatternRewriter & rewriter,
           std::vector<std::string> allFormatsStr;
           for (unsigned int i = 0; i < allFormats.size(); i++)
           {
-            std::string formats_str(allFormats[i].cast<mlir::StringAttr>().getValue());
+            std::string formats_str(cast<mlir::StringAttr>(allFormats[i]).getValue());
             allFormatsStr.push_back(formats_str);
           }
           std::string src_format = allFormatsStr[0];
@@ -656,7 +656,7 @@ Value insertSparseTensorDeclOp(PatternRewriter & rewriter,
     else
     { /// format == "Dense"
 
-      auto resultTensorType = op.getResult().getType().template cast<mlir::TensorType>();
+      auto resultTensorType = cast<mlir::TensorType>(op.getResult().getType());
       std::vector<Value> cur_indices;
       std::vector<int64_t> cur_memref;
       auto resultMemTy = convertTensorToMemRef(resultTensorType);
@@ -715,7 +715,7 @@ Value insertSparseTensorDeclOp(PatternRewriter & rewriter,
       auto resultTensorType = op.getResult().getType();
       std::vector<Value> cur_indices;
       std::vector<int64_t> cur_memref;
-      auto resultMemTy = convertTensorToMemRef(resultTensorType.cast<TensorType>());
+      auto resultMemTy = convertTensorToMemRef(cast<TensorType>(resultTensorType));
 
       for (int i = 0; i < resultMemTy.getRank(); i++)
       {
@@ -1013,8 +1013,8 @@ Value insertSparseTensorDeclOp(PatternRewriter & rewriter,
           {
             auto fillfromfileop = cast<tensorAlgebra::TensorFillFromFileOp>(u);
             /// Can get filename, from "filename" attribute of fillfromfileop
-            StringAttr filename = fillfromfileop.getFilename().cast<StringAttr>();
-            IntegerAttr readModeAttr = fillfromfileop.getReadMode().cast<IntegerAttr>();
+            StringAttr filename = cast<StringAttr>(fillfromfileop.getFilename());
+            IntegerAttr readModeAttr = cast<IntegerAttr>(fillfromfileop.getReadMode());
             rewriter.eraseOp(fillfromfileop);
 
             comet_debug() << " filename: " << filename.getValue() << "\n";

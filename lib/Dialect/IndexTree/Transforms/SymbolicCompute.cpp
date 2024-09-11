@@ -80,13 +80,10 @@ struct CreateSymbolicTree :  public OpRewritePattern<IndexTreeSparseTensorOp> {
                                                             domain_op->getResultTypes(),
                                                             sparse_domain_op.getTensor(),
                                                             sparse_domain_op.getDimAttr(),
-                                                            sparse_domain_op.getFormatAttr(),
-                                                            sparse_domain_op.getPos(),
-                                                            sparse_domain_op.getCrd(),
-                                                            sparse_domain_op.getPosSize(),
-                                                            sparse_domain_op.getCrdSize(),
                                                             sparse_domain_op.getDimSize(),
-                                                            parent);
+                                                            parent,
+                                                            sparse_domain_op.getRegularAttr(),
+                                                            sparse_domain_op.getMaxNnz());
       map.map(sparse_domain_op, new_domain);
     } else {
       // Clone
@@ -127,7 +124,7 @@ struct CreateSymbolicTree :  public OpRewritePattern<IndexTreeSparseTensorOp> {
       unsigned i = 0;
       for(auto tensor : tensors)
       {
-        int32_t dim = dims[i].cast<IntegerAttr>().getValue().getSExtValue();
+        int32_t dim = cast<IntegerAttr>(dims[i]).getValue().getSExtValue();
         tensor_to_node.insert(std::make_pair(
           std::make_pair(tensor, dim),
           node.getOutput()
@@ -226,7 +223,7 @@ struct CreateSymbolicTree :  public OpRewritePattern<IndexTreeSparseTensorOp> {
         auto nested_domain = llvm::cast<IndexTreeNestedDomainOp>(domain_op);
         for(Value subdomain : nested_domain.getDomains()){
           Value new_domain = copyDomain(subdomain, rewriter, loc, map, tensor_to_node, parent_node);
-          indexTree::IndexTreeIndicesOp index_node_op = rewriter.create<indexTree::IndexTreeIndicesOp>(loc, index_node_type, parent, new_domain);
+          indexTree::IndexTreeIndicesOp index_node_op = rewriter.create<indexTree::IndexTreeIndicesOp>(loc, index_node_type, parent, new_domain, rewriter.getBoolAttr(false), nullptr);
           createMapping(index_node_op, subdomain, tensor_to_node);
           parent = index_node_op.getOutput();
           parent_node = index_node_op.getOutput();
@@ -235,7 +232,7 @@ struct CreateSymbolicTree :  public OpRewritePattern<IndexTreeSparseTensorOp> {
       } else 
       {
         Value new_domain = copyDomain(domain, rewriter, loc, map, tensor_to_node);
-        indexTree::IndexTreeIndicesOp index_node_op = rewriter.create<indexTree::IndexTreeIndicesOp>(loc, index_node_type, parent, new_domain);
+        indexTree::IndexTreeIndicesOp index_node_op = rewriter.create<indexTree::IndexTreeIndicesOp>(loc, index_node_type, parent, new_domain, rewriter.getBoolAttr(false), nullptr);
         createMapping(index_node_op, domain, tensor_to_node);
         parent = index_node_op.getOutput();
       }
@@ -287,7 +284,7 @@ struct CreateSymbolicTree :  public OpRewritePattern<IndexTreeSparseTensorOp> {
 struct IndexTreeSymbolicComputePass : comet::impl::IndexTreeSymbolicComputePassBase<IndexTreeSymbolicComputePass> {
   using IndexTreeSymbolicComputePassBase::IndexTreeSymbolicComputePassBase;
 
-  void runOnOperation() {
+  void runOnOperation() override {
     mlir::RewritePatternSet sp_output_patterns(&getContext());
     sp_output_patterns.add<CreateSymbolicTree>(&getContext());
     mlir::applyPatternsAndFoldGreedily(getOperation(), std::move(sp_output_patterns));

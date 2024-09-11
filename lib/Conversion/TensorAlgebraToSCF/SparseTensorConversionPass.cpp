@@ -320,6 +320,27 @@ class ConvertSpTensorExtractOp
   }
 };
 
+class ConvertSpTensorGetPos
+  : public OpConversionPattern<SpTensorGetPos> {
+  using OpConversionPattern<SpTensorGetPos>::OpConversionPattern;
+  ConvertSpTensorGetPos(MLIRContext * context)
+    : OpConversionPattern(context) {}
+
+  LogicalResult matchAndRewrite(SpTensorGetPos op, OpAdaptor adaptor, ConversionPatternRewriter &rewriter) const final {
+    auto opAdaptor = llvm::cast<SpTensorGetPosAdaptor>(adaptor);
+    if(!llvm::isa<SparseTensorType>(opAdaptor.getTensor().getType())){
+      return failure();
+    }
+
+    SparseTensor sp_tensor;
+    if(!unpack_sparse_tensor(opAdaptor.getTensor(), sp_tensor)) {
+      return failure();
+    }
+    rewriter.replaceOp(op, {sp_tensor.dims[op.getDim()].pos});
+    return success();
+  }
+};
+
 class ConvertSpTensorGetCrd
   : public OpConversionPattern<SpTensorGetCrd> {
   using OpConversionPattern<SpTensorGetCrd>::OpConversionPattern;
@@ -714,7 +735,7 @@ class PrintOpLowering : public OpConversionPattern<PrintOp> {
     Value zero = rewriter.create<index::ConstantOp>(loc, index_type, rewriter.getIndexAttr(0));
     empty_tensor = rewriter.create<tensor::InsertOp>(loc, empty_type, neg, empty_tensor, zero);
 
-    if (inputType.isa<SparseTensorType>())
+    if (isa<SparseTensorType>(inputType))
     {
       SparseTensor sp_tensor;
       if(!unpack_sparse_tensor(adaptor.getInput(), sp_tensor)) {
@@ -891,34 +912,34 @@ void mlir::comet::populateSparseTensorConversionPatterns(MLIRContext *context, R
 
   typeConverter.addArgumentMaterialization(
     [](OpBuilder &builder, SparseTensorType resultType, ValueRange inputs,
-        Location loc) -> Optional<Value> {
+        Location loc) {
       auto op = builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs);
       return op->getResult(0);
     });
 
   typeConverter.addSourceMaterialization(
     [](OpBuilder &builder, SparseTensorType resultType, ValueRange inputs,
-        Location loc) -> Optional<Value> {
+        Location loc) {
       auto op = builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs);
       return op->getResult(0);
     });
   
   typeConverter.addArgumentMaterialization(
     [](OpBuilder &builder, WorkspaceType resultType, ValueRange inputs,
-        Location loc) -> Optional<Value> {
+        Location loc) {
       auto op = builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs);
       return op->getResult(0);
     });
 
   typeConverter.addSourceMaterialization(
     [](OpBuilder &builder, WorkspaceType resultType, ValueRange inputs,
-        Location loc) -> Optional<Value> {
+        Location loc) {
       auto op = builder.create<UnrealizedConversionCastOp>(loc, resultType, inputs);
       return op->getResult(0);
     });
 
   patterns.add<PrintOpLowering, GetTimeLowering, PrintElapsedTimeLowering>(typeConverter, context);
-  patterns.add<ConvertSpTensorConstructOp, ConvertSpTensorInsertOp, ConvertSpTensorExtractOp, ConvertSpTensorGetCrd, ConvertSpTensorInsertCrd, ConvertSpTensorGetDimSize, ConvertSpTensorFindPos>(typeConverter, context);
+  patterns.add<ConvertSpTensorConstructOp, ConvertSpTensorInsertOp, ConvertSpTensorExtractOp, ConvertSpTensorGetCrd, ConvertSpTensorGetPos, ConvertSpTensorInsertCrd, ConvertSpTensorGetDimSize, ConvertSpTensorFindPos>(typeConverter, context);
   patterns.add<ConvertAllocWorkspaceOp, ConvertWorkspaceGetNNZ, ConvertWorkspaceGetCrds, ConvertWorkspaceTensorInsertOp, ConvertWorkspaceTensorExtractOp, ConvertWorkspaceGetDimSize, ConvertWorkspaceClearOp>(typeConverter, context);
 }
 

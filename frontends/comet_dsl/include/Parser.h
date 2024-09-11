@@ -32,7 +32,6 @@
 #include "AST.h"
 #include "Lexer.h"
 
-#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Support/raw_ostream.h"
@@ -92,7 +91,7 @@ namespace tensorAlgebra
       lexer.consume(tok_return);
 
       /// return takes an optional argument
-      llvm::Optional<std::unique_ptr<ExprAST>> expr;
+      std::optional<std::unique_ptr<ExprAST>> expr;
       if (lexer.getCurToken() != ';')
       {
         expr = parseExpression();
@@ -122,7 +121,7 @@ namespace tensorAlgebra
       lexer.consume(tok_elews);
 
       /// return takes an optional argument
-      llvm::Optional<std::unique_ptr<ExprAST>> expr;
+      std::optional<std::unique_ptr<ExprAST>> expr;
       if (lexer.getCurToken() != ';')
       {
         expr = parseExpression();

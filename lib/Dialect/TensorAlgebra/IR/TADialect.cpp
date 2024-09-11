@@ -29,7 +29,7 @@
 #include "comet/Dialect/TensorAlgebra/IR/TADialect.h"
 
 #include "mlir/IR/DialectImplementation.h"
-#include "mlir/IR/FunctionImplementation.h"
+#include "mlir/Interfaces/FunctionImplementation.h"
 #include "mlir/IR/OpImplementation.h"
 #include "llvm/ADT/TypeSwitch.h"
 
@@ -92,13 +92,13 @@ mlir::LogicalResult DenseConstantOp::verify()
 {
   /// If the return type of the constant is not an unranked tensor, the shape
   /// must match the shape of the attribute holding the data.
-  auto resultType = getResult().getType().dyn_cast<mlir::RankedTensorType>();
+  auto resultType = dyn_cast<RankedTensorType>(getResult().getType());
   if (!resultType)
     return success();
 
   /// Check that the rank of the attribute type matches the rank of the constant
   /// result type.
-  auto attrType = getValue().getType().cast<mlir::TensorType>();
+  auto attrType = cast<mlir::TensorType>(getValue().getType());
   if (attrType.getRank() != resultType.getRank())
   {
     return emitOpError("return type must match the one of the attached value "
@@ -138,9 +138,18 @@ CallInterfaceCallable GenericCallOp::getCallableForCallee()
   return (*this)->getAttrOfType<SymbolRefAttr>("callee");
 }
 
+void GenericCallOp::setCalleeFromCallable(CallInterfaceCallable callee)
+{
+  (*this)->setAttr("callee", callee.get<SymbolRefAttr>());
+}
+
 /// Get the argument operands to the called function, this is required by the
 /// call interface.
 Operation::operand_range GenericCallOp::getArgOperands() { return getInputs(); }
+
+/// Get the argument operands to the called function, this is required by the
+/// call interface.
+MutableOperandRange GenericCallOp::getArgOperandsMutable() { return getInputsMutable(); }
 
 //===----------------------------------------------------------------------===//
 /// FuncOp
@@ -239,8 +248,8 @@ mlir::LogicalResult TAReturnOp::verify()
   auto resultType = results.front();
 
   /// Check that the result type of the function matches the operand type.
-  if (inputType == resultType || inputType.isa<mlir::UnrankedTensorType>() ||
-      resultType.isa<mlir::UnrankedTensorType>())
+  if (inputType == resultType || isa<mlir::UnrankedTensorType>(inputType) ||
+      isa<mlir::UnrankedTensorType>(resultType))
     return mlir::success();
 
   return emitError() << "type of return operand (" << inputType

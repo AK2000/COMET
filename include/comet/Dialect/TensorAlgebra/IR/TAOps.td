@@ -30,8 +30,9 @@
 
 
 include "mlir/IR/OpBase.td"
-include "mlir/IR/FunctionInterfaces.td"
+include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
+include "mlir/IR/BuiltinAttributeInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/CastInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
@@ -332,7 +333,7 @@ def TensorFillOp : TA_Op<"fill">{
   let description = [{
   }];
 
-  let arguments = (ins AnyTensor:$lhs, AnyAttr:$value);
+  let arguments = (ins AnyTensor:$lhs, TypedAttrInterface:$value);
   
   //TODO(gkestor): add verifier
   //let hasVerifier = 1;
@@ -668,6 +669,8 @@ def FuncOp : TA_Op<"func", [
     //===------------------------------------------------------------------===//
     /// FunctionOpInterface Methods
     //===------------------------------------------------------------------===//
+    /// Returns the argument types of this function.
+    Region* getCallableRegion() { return &getBody(); }
 
     /// Returns the argument types of this function.
     ArrayRef<Type> getArgumentTypes() { return getFunctionType().getInputs(); }
@@ -781,12 +784,12 @@ def TensorExtractOp : TA_Op<"TAExtractOp", [Pure, SameVariadicOperandSize]>{
 }
 
 def SpTensorGetCrd : TA_Op<"SpTensorGetCrd", [Pure]>{
-  let arguments = (ins TA_AnyTensor:$tensor, Index:$idx, OptionalAttr<I32Attr>:$dim);
+  let arguments = (ins TA_AnyTensor:$tensor, Index:$idx, OptionalAttr<UI32Attr>:$dim);
   let results = (outs Index:$crd);
 }
 
 def SpTensorInsertCrd : TA_Op<"SpTensorInsertCrd", [Pure]>{
-  let arguments = (ins TA_AnyTensor:$tensor, I32Attr:$dim, Index:$idx, Index:$crd);
+  let arguments = (ins TA_AnyTensor:$tensor, UI32Attr:$dim, Index:$idx, Index:$crd);
   let results = (outs TA_AnyTensor:$result);
 }
 
@@ -803,6 +806,11 @@ def SpTensorGetNNZ : TA_Op<"SpTensorGetNNZ", [Pure]>{
 def TensorFindPos : TA_Op<"TensorFindPos", [Pure]>{
   let arguments = (ins TA_AnyTensor:$tensor, Index:$crd, I32Attr:$dim, DefaultValuedAttr<BoolAttr, "false">:$is_linear);
   let results = (outs Index:$result);
+}
+
+def SpTensorGetPos : TA_Op<"TensorGetPos", [Pure]>{
+  let arguments = (ins TA_AnyTensor:$tensor, UI32Attr:$dim);
+  let results = (outs TensorOf<[Index]>:$result);
 }
 
 def AllocWorkspaceOp : TA_Op<"AllocWorkspace", [Pure, SameVariadicOperandSize]>{

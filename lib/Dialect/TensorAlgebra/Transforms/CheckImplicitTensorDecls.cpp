@@ -114,7 +114,7 @@ void addTensorDecl(t op)
 
     mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<tensorAlgebra::TransposeOp>(op.getOperation()).getFormats();
     unsigned int i = opFormatsArrayAttr.size() - 1;
-    std::string ret_format_local(opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue());
+    std::string ret_format_local(cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue());
     ret_format = ret_format_local;
   }
   else if (isa<TensorMultOp>(op) ||
@@ -144,7 +144,7 @@ void addTensorDecl(t op)
       opFormatsArrayAttr = dyn_cast<TensorSubtractOp>(op.getOperation()).getFormats();
 
     unsigned int i = opFormatsArrayAttr.size() - 1;
-    std::string ret_format_local(opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue());
+    std::string ret_format_local(cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue());
     ret_format = ret_format_local;
   }
   else

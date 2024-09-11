@@ -31,7 +31,7 @@
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/IR/RegionKindInterface.td"
-include "mlir/IR/FunctionInterfaces.td"
+include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/CallInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
@@ -88,7 +88,12 @@ def IndexTreeIndicesOp : IndexTree_Op<"IndexOp", [Pure]>{
   let description = [{
   }];
 
-  let arguments = (ins IndexTree_NodeType:$parent, Optional<IndexTree_DomainType>:$domain);
+  let arguments = (ins 
+    IndexTree_NodeType:$parent,
+    Optional<IndexTree_DomainType>:$domain,
+    DefaultValuedAttr<BoolAttr, "false">:$is_parallel,
+    OptionalAttr<DeviceMappingArrayAttr>:$mapping
+  );
 
   let results = (outs IndexTree_IndexNodeType:$output);
 }
@@ -175,7 +180,7 @@ def ConcreteDomainInterface : OpInterface<"ConcreteDomain"> {
 }
 
 def IndexTreeSparseDomainOp : IndexTree_Op<"SparseDomainOp", 
-    [Pure, ConcreteDomainInterface]>{
+    [Pure, ConcreteDomainInterface, AttrSizedOperandSegments]>{
 
   let summary = "";
   let description = [{
@@ -183,14 +188,12 @@ def IndexTreeSparseDomainOp : IndexTree_Op<"SparseDomainOp",
 
   let arguments = (ins
       TA_AnyTensor:$tensor,
-      UI32Attr:$dim, 
-      I32Attr:$format, 
-      AnyTensor:$pos,
-      AnyTensor:$crd,
-      Index:$pos_size,
-      Index:$crd_size,
+      UI32Attr:$dim,
       Index:$dim_size,
-      Optional<AnyTypeOf<[Index, IndexTree_TensorAccessType]>>:$parent);
+      Optional<Index>:$parent,
+      DefaultValuedAttr<BoolAttr, "false">:$regular,
+      Optional<Index>:$max_nnz
+      );
 
   let results = (outs IndexTree_DomainType:$domain);
 }
@@ -215,7 +218,7 @@ def IndexTreeWorkspaceDomainOp : IndexTree_Op<"WorkspaceDomainOp",
     WorkspaceTensor:$tensor,
     Index:$dim_size,
     UI32Attr:$dim, 
-    Optional<AnyTypeOf<[Index, IndexTree_TensorAccessType]>>:$parent
+    Optional<AnyTypeOf<[Index]>>:$parent
   );
   let results = (outs IndexTree_DomainType:$domain);
 }
@@ -331,4 +334,23 @@ def IndexTreeCleanWorkspaceOp : IndexTree_Op<"WorkspaceStartRowOp", [Pure]>{
   let arguments = (ins IndexTree_NodeType:$parent, WorkspaceTensor:$workspace);
   let results = (outs WorkspaceTensor:$result);
 }
+
+def SplitIndexOp : IndexTree_Op<"SplitIndexOp", [Pure]>{
+  let summary = "Create an index variable bound to a specific computation.";
+  let description = [{
+  }];
+
+  let arguments = (ins IndexTree_NodeType:$input, Index:$split);
+  let results = (outs IndexTree_IndexNodeType:$first, IndexTree_IndexNodeType:$second);
+}
+
+def JoinIndexOp : IndexTree_Op<"JoinIndexOp", [Pure]>{
+  let summary = "Create an index variable bound to a specific computation.";
+  let description = [{
+  }];
+
+  let arguments = (ins IndexTree_NodeType:$first, IndexTree_NodeType:$second, Index:$dim_size);
+  let results = (outs IndexTree_IndexNodeType:$result);
+}
+
 #endif // INDEXTREE_OPS

@@ -321,7 +321,7 @@ void FindOptimalTCFactorizationPass::FindOptimalTCFactorization(tensorAlgebra::T
     for (size_t i = 1; i < order.size(); i++)
     {
       newRhs2 = inLTValues[inLTOps[order[i]]];
-      auto elType = newRhs1.getType().dyn_cast<RankedTensorType>().getElementType();
+      auto elType = cast<RankedTensorType>(newRhs1.getType()).getElementType();
       auto newType = RankedTensorType::get(lhsTensorShapes[i - 1], elType);
       std::vector<Value> newSumLabels;
 
@@ -541,7 +541,7 @@ void STCRemoveDeadOpsPass::runOnOperation()
   target.addLegalDialect<mlir::linalg::LinalgDialect,
                          ArithDialect,
                          scf::SCFDialect,
-                         AffineDialect, memref::MemRefDialect,
+                         affine::AffineDialect, memref::MemRefDialect,
                          bufferization::BufferizationDialect>();
 
   target.addLegalOp<tensorAlgebra::TensorMultOp>();

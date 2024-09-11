@@ -125,20 +125,20 @@ mlir::LogicalResult generalIndexOperationRewrite(
   }
 
   auto indexing_maps = mult_op.getIndexingMaps();
-  auto semiring = mult_op.getSemiringAttr().template cast<mlir::StringAttr>().getValue();
+  auto semiring = cast<mlir::StringAttr>(mult_op.getSemiringAttr()).getValue();
   auto MaskingTypeAttr = mult_op.getMaskTypeAttr();
 
   auto tensor_type = op->getResultTypes()[0];
   auto itree_op = rewriter.create<IndexTreeOp>(loc, tensor_type, lhs_tensor);
   Region* body = &itree_op.getRegion();
   loc = body->getLoc();
-  Block* block = rewriter.createBlock(body);
+  rewriter.createBlock(body);
 
   indexTree::IndexTreeType tree_type = indexTree::IndexTreeType::get(context);
   Value parent = rewriter.create<indexTree::IndexTreeRootOp>(loc, tree_type);
 
   //Construct each index variable
-  auto lhsMap = indexing_maps[2].template cast<AffineMapAttr>().getValue();
+  auto lhsMap = cast<AffineMapAttr>(indexing_maps[2]).getValue();
   indexTree::IndexNodeType index_node_type = indexTree::IndexNodeType::get(context); 
   std::vector<Value> index_nodes;
   for (unsigned i = 0; i < lhsMap.getNumDims(); i++)
@@ -163,7 +163,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
       loc,
       TypeRange({access_type, access_type}),
       lhs_tensor,
-      index_nodes[expr.template cast<AffineDimExpr>().getPosition()],
+      index_nodes[cast<AffineDimExpr>(expr).getPosition()],
       rewriter.getUI32IntegerAttr((unsigned)i),
       prev_dim
     );
@@ -181,7 +181,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
   pos.clear();
   crds.clear();
   prev_dim = nullptr;
-  auto affineMap = indexing_maps[0].template cast<AffineMapAttr>().getValue();
+  auto affineMap = cast<AffineMapAttr>(indexing_maps[0]).getValue();
   for (size_t i = 0; i < affineMap.getNumResults(); i++)
   {
     auto expr = affineMap.getResult(i);
@@ -189,7 +189,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
       loc,
       TypeRange({access_type, access_type}),
       rhs1_tensor,
-      index_nodes[expr.template cast<AffineDimExpr>().getPosition()],
+      index_nodes[cast<AffineDimExpr>(expr).getPosition()],
       rewriter.getUI32IntegerAttr((unsigned)i),
       prev_dim
     );
@@ -203,7 +203,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
   pos.clear();
   crds.clear();
   prev_dim = nullptr;
-  affineMap = indexing_maps[1].template cast<AffineMapAttr>().getValue();
+  affineMap = cast<AffineMapAttr>(indexing_maps[1]).getValue();
   for (size_t i = 0; i < affineMap.getNumResults(); i++)
   {
     auto expr = affineMap.getResult(i);
@@ -211,7 +211,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
       loc,
       TypeRange({access_type, access_type}),
       rhs2_tensor,
-      index_nodes[expr.template cast<AffineDimExpr>().getPosition()],
+      index_nodes[cast<AffineDimExpr>(expr).getPosition()],
       rewriter.getUI32IntegerAttr((unsigned)i),
       prev_dim
     );

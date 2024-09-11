@@ -127,7 +127,7 @@ namespace
 
         double alpha = 1.0;
         auto betaAttr = op->getAttr("__beta__");
-        double beta = betaAttr.cast<FloatAttr>().getValueAsDouble();
+        double beta = cast<FloatAttr>(betaAttr).getValueAsDouble();
 
         new_op.getOperation()->setAttr("__alpha__", rewriter.getF64FloatAttr(alpha));
         new_op.getOperation()->setAttr("__beta__", rewriter.getF64FloatAttr(beta));

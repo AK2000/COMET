@@ -107,7 +107,7 @@ struct InferIndexDomain : public OpRewritePattern<IndexTreeIndicesOp> {
 
     indexTree::IndexNodeType index_node_type = indexTree::IndexNodeType::get(context); 
     builder.replaceOpWithNewOp<indexTree::IndexTreeIndicesOp>(
-                          op, index_node_type, op.getParent(), final_domain);
+                          op, index_node_type, op.getParent(), final_domain, builder.getBoolAttr(false), nullptr);
     return success();
   }
 };

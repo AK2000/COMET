@@ -893,7 +893,7 @@ namespace
               /// infer the format
               mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<TensorMultOp>(tensordecl.getDefiningOp()).getFormats();
               unsigned int i = opFormatsArrayAttr.size() - 1;
-              mlir::StringRef lhs_format = opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue();
+              mlir::StringRef lhs_format = cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue();
               comet_debug() << __LINE__ << " lhs_format: " << lhs_format << "\n";
 
               comet_debug() << " lhs_format: " << lhs_format << "\n";
@@ -908,7 +908,7 @@ namespace
               /// infer the format
               mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<TensorElewsMultOp>(e.getDefiningOp()).getFormats();
               unsigned int i = opFormatsArrayAttr.size() - 1;
-              mlir::StringRef lhs_format = opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue();
+              mlir::StringRef lhs_format = cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue();
               comet_debug() << __LINE__ << " lhs_format: " << lhs_format << "\n";
 
               comet_debug() << " lhs_format: " << lhs_format << "\n";
@@ -926,7 +926,7 @@ namespace
             /// infer the format
             mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<TensorMultOp>(e.getDefiningOp()).getFormats();
             unsigned int i = opFormatsArrayAttr.size() - 1;
-            mlir::StringRef lhs_format = opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue();
+            mlir::StringRef lhs_format = cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue();
             comet_debug() << __LINE__ << " lhs_format: " << lhs_format << "\n";
             comet_debug() << " lhs_format: " << lhs_format << "\n";
             formats.push_back(lhs_format);
@@ -939,7 +939,7 @@ namespace
             /// infer the format
             mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<TensorElewsMultOp>(e.getDefiningOp()).getFormats();
             unsigned int i = opFormatsArrayAttr.size() - 1;
-            mlir::StringRef lhs_format = opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue();
+            mlir::StringRef lhs_format = cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue();
             comet_debug() << __LINE__ << " lhs_format: " << lhs_format << "\n";
 
             comet_debug() << " lhs_format: " << lhs_format << "\n";
@@ -953,7 +953,7 @@ namespace
             /// infer the format
             mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<TensorAddOp>(e.getDefiningOp()).getFormats();
             unsigned int i = opFormatsArrayAttr.size() - 1;
-            mlir::StringRef lhs_format = opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue();
+            mlir::StringRef lhs_format = cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue();
             comet_debug() << __LINE__ << " lhs_format: " << lhs_format << "\n";
 
             comet_debug() << " lhs_format: " << lhs_format << "\n";
@@ -967,7 +967,7 @@ namespace
             /// infer the format
             mlir::ArrayAttr opFormatsArrayAttr = dyn_cast<TensorSubtractOp>(e.getDefiningOp()).getFormats();
             unsigned int i = opFormatsArrayAttr.size() - 1;
-            mlir::StringRef lhs_format = opFormatsArrayAttr[i].cast<mlir::StringAttr>().getValue();
+            mlir::StringRef lhs_format = cast<mlir::StringAttr>(opFormatsArrayAttr[i]).getValue();
             comet_debug() << __LINE__ << " lhs_format: " << lhs_format << "\n";
 
             comet_debug() << " lhs_format: " << lhs_format << "\n";
@@ -1094,7 +1094,7 @@ namespace
           return tcop;
         }
         case '/':
-          return builder.create<DivOp>(location, ret_tensor_type, lhs, rhs, lbls);
+          return builder.create<mlir::tensorAlgebra::DivOp>(location, ret_tensor_type, lhs, rhs, lbls);
 
         case tok_elews:
           comet_vdump(lhs_tensor);
@@ -1591,9 +1591,9 @@ namespace
             auto step_idx =
                 cast<ConstantIndexOp>(range.getStep().getDefiningOp());
 
-            auto min = min_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
-            auto max = max_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
-            auto step = step_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
+            auto min = cast<mlir::IntegerAttr>(min_idx.getValue()).getValue().getSExtValue();
+            auto max = cast<mlir::IntegerAttr>(max_idx.getValue()).getValue().getSExtValue();
+            auto step = cast<mlir::IntegerAttr>(step_idx.getValue()).getValue().getSExtValue();
             if (max == mlir::ShapedType::kDynamic)
             {
               dims_sizes.push_back(mlir::ShapedType::kDynamic);
@@ -2354,9 +2354,9 @@ namespace
           auto max_idx = cast<ConstantIndexOp>(range.getMax().getDefiningOp());
           auto step_idx = cast<ConstantIndexOp>(range.getStep().getDefiningOp());
 
-          auto min = min_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
-          auto max = max_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
-          auto step = step_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
+          auto min = cast<mlir::IntegerAttr>(min_idx.getValue()).getValue().getSExtValue();
+          auto max = cast<mlir::IntegerAttr>(max_idx.getValue()).getValue().getSExtValue();
+          auto step = cast<mlir::IntegerAttr>(step_idx.getValue()).getValue().getSExtValue();
 
           if (max == mlir::ShapedType::kDynamic)
           {
@@ -2393,9 +2393,9 @@ namespace
           auto max_idx = cast<ConstantIndexOp>(range.getMax().getDefiningOp());
           auto step_idx = cast<ConstantIndexOp>(range.getStep().getDefiningOp());
 
-          auto min = min_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
-          auto max = max_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
-          auto step = step_idx.getValue().cast<mlir::IntegerAttr>().getValue().getSExtValue();
+          auto min = cast<mlir::IntegerAttr>(min_idx.getValue()).getValue().getSExtValue();
+          auto max = cast<mlir::IntegerAttr>(max_idx.getValue()).getValue().getSExtValue();
+          auto step = cast<mlir::IntegerAttr>(step_idx.getValue()).getValue().getSExtValue();
 
           if (max == mlir::ShapedType::kDynamic)
           {
@@ -2727,7 +2727,7 @@ namespace
     {
       mlir::Value tensorValue = symbolTable.lookup(tensor_name);
       auto tensorType = tensorValue.getDefiningOp()->getOpResult(0).getType();
-      auto tensorElType = tensorType.cast<mlir::TensorType>().getElementType();
+      auto tensorElType = cast<mlir::TensorType>(tensorType).getElementType();
 
       mlir::FloatAttr valueAttr;
       if (tensorElType.isF64())

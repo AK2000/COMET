@@ -66,7 +66,7 @@ struct ConcretizeTensorDomain :  public OpRewritePattern<IndexTreeTensorDomainOp
     {
       //Domain comes from a sparse tensor (may still be dense)
       int32_t rank = construct_op.getTensorRank();
-      TensorFormatEnum format = construct_op.getDimensionFormats()[2 * dim].cast<TensorFormatEnumAttr>().getValue();
+      TensorFormatEnum format = cast<TensorFormatEnumAttr>(construct_op.getDimensionFormats()[2 * dim]).getValue();
 
       if(format == TensorFormatEnum::D)
       {
@@ -114,10 +114,9 @@ struct ConcretizeTensorDomain :  public OpRewritePattern<IndexTreeTensorDomainOp
             }
           }
         }
+        Value max = construct_op.getOperand((8*rank) + 2 + dim); //TODO: Find maximum number of nonzeros per row
         new_domain = rewriter.create<IndexTreeSparseDomainOp>(
-          loc, domain_type, tensor, domain_op.getDimAttr(), 
-          TensorFormatEnumAttr::get(context, format), 
-          pos, crd, pos_size, crd_size, dim_size, parent);
+          loc, domain_type, tensor, domain_op.getDimAttr(), dim_size, parent, rewriter.getBoolAttr(true), max);
       }
     } else if(llvm::isa<tensorAlgebra::WorkspaceType>(tensor.getType())) {
       auto index_type = rewriter.getIndexType();
@@ -367,13 +366,10 @@ struct InferOutputDomains : public OpRewritePattern<IndexTreeSparseTensorOp> {
                                                             domain_op->getResultTypes(),
                                                             sparse_domain_op.getTensor(),
                                                             sparse_domain_op.getDimAttr(),
-                                                            sparse_domain_op.getFormatAttr(),
-                                                            sparse_domain_op.getPos(),
-                                                            sparse_domain_op.getCrd(),
-                                                            sparse_domain_op.getPosSize(),
-                                                            sparse_domain_op.getCrdSize(),
                                                             sparse_domain_op.getDimSize(),
-                                                            nullptr);
+                                                            nullptr,
+                                                            sparse_domain_op.getRegularAttr(),
+                                                            sparse_domain_op.getMaxNnz());
       map.map(sparse_domain_op, new_domain);
 
       if(new_parent_domain)
@@ -395,7 +391,7 @@ struct InferOutputDomains : public OpRewritePattern<IndexTreeSparseTensorOp> {
       Operation* origin = arg.getDefiningOp();
       if(new_domain_op->getBlock() == origin->getBlock() && new_domain_op->isBeforeInBlock(origin))
       {
-        rewriter.updateRootInPlace(new_domain_op, [&]() { new_domain_op->moveAfter(origin); });
+        rewriter.modifyOpInPlace(new_domain_op, [&]() { new_domain_op->moveAfter(origin); });
         rewriter.setInsertionPointAfter(new_domain_op);
       }
     }
