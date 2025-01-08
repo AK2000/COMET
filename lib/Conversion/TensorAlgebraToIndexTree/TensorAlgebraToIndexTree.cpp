@@ -255,8 +255,9 @@ mlir::LogicalResult generalIndexOperationRewrite(
   auto itree_op = rewriter.create<IndexTreeOp>(loc, tensor_type, lhs_tensor);
   Region* body = &itree_op.getRegion();
   loc = body->getLoc();
-  Block* block = rewriter.createBlock(body);
-
+  Block* block = rewriter.createBlock(body, {}, TypeRange(lhs_tensor.getType()), {lhs_tensor.getLoc()});
+  lhs_tensor = block->getArgument(0);
+  
   indexTree::IndexTreeType tree_type = indexTree::IndexTreeType::get(context);
   Value parent = rewriter.create<indexTree::IndexTreeRootOp>(loc, tree_type);
 
