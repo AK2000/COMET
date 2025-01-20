@@ -56,6 +56,21 @@ def SparseTensor : TensorAlgebra_Type<"SparseTensor", "sparse_tensor", [DeclareT
     // TODO: Implement custom builder from "common" format strings into format strings
 }
 
+def SparseTensorSlice : TensorAlgebra_Type<"SparseTensorSlice", "sparse_tensor_slice", [DeclareTypeInterfaceMethods<ShapedTypeInterface>]> {
+    let summary = "Sparse tensor slice to use in tensor algebra dialect";
+    let description = [{}];
+
+    let parameters = (ins
+        "::mlir::Type":$element_type,
+        "::mlir::IntegerType":$indices_type,
+        ArrayRefParameter<"int64_t", "Dimensions of tensor">:$dims,
+        ArrayRefParameter<"TensorFormatEnum", "Format">:$format
+    );
+    
+    let hasCustomAssemblyFormat = 1;
+    // TODO: Implement custom builder from "common" format strings into format strings
+}
+
 def WorkspaceTensor : TensorAlgebra_Type<"Workspace", "workspace", [DeclareTypeInterfaceMethods<ShapedTypeInterface>]> {
     let summary = "Temporary tensor generated from a workspace transfrom";
     let description = [{

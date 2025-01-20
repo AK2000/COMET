@@ -1201,4 +1201,19 @@ def WorkspaceClearOp : TA_Op<"WorkspaceClear", [Pure]>{
   let arguments = (ins WorkspaceTensor:$tensor);
   let results = (outs WorkspaceTensor:$result);
 }
+
+def SparseTensorSlice : TA_Op<:SparseTensorSlice", [Pure, AttrSizedOperandSegments]>{
+  let summary = "Slice a sparse tensor. Designed for parallel operations.";
+  let description = [{}];
+
+  let arguments = (ins SparseTensor:$src, Variadic<Index>:$start, Variadic<Index>:$sizes, I32ArrayAttr:$static_start, I32ArrayAttr:$static_end);
+  let results = (ins SparseTensorSlice:$slice);
+}
+
+def SparseParallelInsertSlice : TA_Op<"SparseInsertSlice", [Pure]>{
+  let summary = "Insert a slice into a sparse tensor in parallel.";
+  let description = [{}];
+
+  let arguments = (ins SparseTensorSlice:$src, SparseTensor:$dest);
+}
 #endif /// TA_OPS
