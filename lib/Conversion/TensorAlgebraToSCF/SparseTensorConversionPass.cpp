@@ -108,7 +108,7 @@ static bool unpack_sparse_tensor(Value sparse_tensor, SparseTensor& result)
       return false;
 
     auto format = type.getFormat();
-    auto dim_sizes = type.getDims();
+    auto dim_sizes = type.getLevels();
     auto cur_arg = cast.getInputs().begin();
     result.dim_sizes = *cur_arg;
     ++cur_arg;
@@ -226,7 +226,7 @@ class ConvertSpTensorConstructOp
     auto crd = op.getCrdIndices();
     auto pos = op.getPosIndices();
     auto vals = op.getVals();
-    unsigned rank = sp_tensor_type.getDims().size();
+    unsigned rank = sp_tensor_type.getLevels().size();
     sp_tensor.dim_sizes = dims;
     for(unsigned i = 0; i < rank; i++)
     {
@@ -1280,7 +1280,7 @@ class PrintElapsedTimeLowering : public OpConversionPattern<PrintElapsedTimeOp> 
 void mlir::comet::populateSparseTensorConversionPatterns(MLIRContext *context, RewritePatternSet &patterns, TypeConverter &typeConverter) {
   typeConverter.addConversion(
     [](tensorAlgebra::SparseTensorType type, SmallVectorImpl<Type> &types) {
-      ArrayRef<int64_t> dim_sizes = type.getDims();
+      ArrayRef<int64_t> dim_sizes = type.getLevels();
       ArrayRef<TensorFormatEnum> format = type.getFormat();
 
       auto context = type.getContext();

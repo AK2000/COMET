@@ -369,7 +369,7 @@ bool SparseTensorType::hasRank() const
 
 llvm::ArrayRef<int64_t> SparseTensorType::getShape() const
 {
-  return getDims();
+  return getLevels();
 }
 
 ::mlir::Type SparseTensorType::parse(::mlir::AsmParser &odsParser) {
@@ -423,7 +423,8 @@ llvm::ArrayRef<int64_t> SparseTensorType::getShape() const
       ::mlir::Type((*_result_element_type)),
       ::mlir::IntegerType((*indices_type)),
       ::llvm::ArrayRef<int64_t>((_result_dims)),
-      ::llvm::ArrayRef<TensorFormatEnum>((result_formats)));
+      ::llvm::ArrayRef<TensorFormatEnum>((result_formats)),
+      ::llvm::ArrayRef<::llvm::ArrayRef<int64_t>>());
 }
 
 
@@ -436,7 +437,7 @@ void SparseTensorType::print(::mlir::AsmPrinter &odsPrinter) const {
   odsPrinter.printStrippedAttrOrType(getIndicesType());
   odsPrinter << ",";
   odsPrinter << ' ';
-  odsPrinter.printDimensionList(getDims());
+  odsPrinter.printDimensionList(getLevels());
   odsPrinter << ",";
   odsPrinter << ' ';
   odsPrinter.printStrippedAttrOrType(getFormat());

@@ -32,7 +32,7 @@ def TAFormatArrayAttr : TypedArrayAttrBase<TAFormatEnum, "Format array"> {
 class OptionalArrayRefOfArrayRefParameter<string arrayOf, string desc> :
     OptionalParameter<"::llvm::ArrayRef<::llvm::ArrayRef<" # arrayOf # ">>", desc> {
   let allocator = [{
-    llvm::SmallVector<llvm::SmallVector<}] # arrayOf # [{, 4>, 4> tmpFields;
+    llvm::SmallVector<llvm::ArrayRef<}] # arrayOf # [{>, 4> tmpFields;
     for (size_t i = 0, e = $_self.size(); i < e; ++i)
       tmpFields.push_back(ArrayRef<}] # arrayOf # [{>($_allocator.copyInto($_self[i])));
     $_dst = $_allocator.copyInto(ArrayRef<ArrayRef<}] # arrayOf # [{>>(tmpFields));

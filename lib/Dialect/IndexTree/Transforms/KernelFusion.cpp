@@ -100,9 +100,9 @@ void collectDimCompound(IndexTreeOp itree_op,
     indexOp_to_DimCompound.push_back(llvm::DenseSet<DimCompound>());
     auto &dims_set = indexOp_to_DimCompound.back();
     for (auto user : index_op->getUsers()) {
-      if (auto indexToTensorDimOp = llvm::dyn_cast<IndexTreeIndexToTensorOp>(user)) {
+      if (auto indexToTensorDimOp = llvm::dyn_cast<IndexTreeIndexToLevelOp>(user)) {
         comet_vdump(indexToTensorDimOp);
-        uint32_t dim = indexToTensorDimOp.getDim();
+        uint32_t dim = indexToTensorDimOp.getLevel();
         /// Find the true operand if it is one of block arguments
         Value operand = getRealLhsTensor(itree_op, indexToTensorDimOp.getTensor());
         dims_set.insert(std::make_pair(dim, operand));
@@ -214,8 +214,8 @@ void collectOperandsDims(IndexTreeOp itree,
       auto positions = lhs_op.getPos();
       for (Value pos: positions)
       {
-        auto indexToTensorDimOp = llvm::cast<IndexTreeIndexToTensorOp>(pos.getDefiningOp());
-        uint32_t dim = indexToTensorDimOp.getDim();
+        auto indexToTensorDimOp = llvm::cast<IndexTreeIndexToLevelOp>(pos.getDefiningOp());
+        uint32_t dim = indexToTensorDimOp.getLevel();
         lhs_dims.push_back(std::make_pair(dim, lhs_tensor));
 
         /// Find out which IndexOp this IndexToTensorDim links to
@@ -256,8 +256,8 @@ void collectOperandsDims(IndexTreeOp itree,
 
       auto positions = rhs_op.getPos();
       for (Value pos : positions) {
-        auto indexToTensorDimOp = llvm::cast<IndexTreeIndexToTensorOp>(pos.getDefiningOp());
-        uint32_t dim = indexToTensorDimOp.getDim();
+        auto indexToTensorDimOp = llvm::cast<IndexTreeIndexToLevelOp>(pos.getDefiningOp());
+        uint32_t dim = indexToTensorDimOp.getLevel();
         rhs_dims.back().push_back(std::make_pair(dim, rhs_tensors.back()));
 
         /// Find out which IndexOp this IndexToTensorDim links to
@@ -411,7 +411,7 @@ void collectComputeOpInfo(IndexTreeOp itree,
   for (uint32_t d_i = dim_base; d_i < lhs_dims.size(); ++d_i) {
     Value index_node = index_ops[lhs_index_idx[d_i]];
     uint32_t dim = lhs_dims[d_i].first - dim_base;
-    auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+    auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({access_type, access_type}),
         lhs_tensor,
@@ -607,7 +607,7 @@ Value createLHSOperand(
   {
     Value index_node = index_ops[lhs_index_idx[d_i]];
     uint32_t dim = lhs_dims[d_i].first - dim_base;
-    auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+    auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({access_type, access_type}),
         lhs_tensor,
@@ -667,7 +667,7 @@ llvm::SmallVector<Value> createRHSOperands(
     for (uint32_t d_i = dim_base; d_i < rhs_dims.size(); ++d_i) {
       Value index_node = index_ops[rhs_index_idx[d_i]];
       uint32_t dim = rhs_dims[d_i].first - dim_base;
-      auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+      auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
           loc,
           TypeRange({access_type, access_type}),
           rhs_tensor,
@@ -749,7 +749,7 @@ Value createComputeOp(
   for (uint32_t d_i = dim_base; d_i < lhs_dims.size(); ++d_i) {
     Value index_node = index_ops[lhs_index_idx[d_i]];
     uint32_t dim = lhs_dims[d_i].first - dim_base;
-    auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+    auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({access_type, access_type}),
         lhs_tensor,

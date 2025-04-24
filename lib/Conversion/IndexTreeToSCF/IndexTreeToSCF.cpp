@@ -383,7 +383,7 @@ namespace
           if(auto lhs = llvm::dyn_cast<IndexTreeLHSOperandOp>(user)) {
             int64_t dim = 0;
             for(Value crd : lhs.getCrds()) {
-              if(auto access = crd.getDefiningOp<IndexTreeIndexToTensorOp>()) {
+              if(auto access = crd.getDefiningOp<IndexTreeIndexToLevelOp>()) {
                 auto node = access.getIndex().getDefiningOp<IndexTreeIndicesOp>();
                 TensorSubsetInfo slice = {dim, -1, -1};
                 output_sets[node].insert(std::make_pair(input, slice));
@@ -1441,7 +1441,7 @@ namespace
       return success();
     }
 
-    mlir::LogicalResult convertTensorAccessOp(IndexTreeIndexToTensorOp access_op, IRRewriter &rewriter)
+    mlir::LogicalResult convertTensorAccessOp(IndexTreeIndexToLevelOp access_op, IRRewriter &rewriter)
     {
       // Find the position to insert these operations based off the nearest use.
       // TODO: figure out order of users?
@@ -1458,7 +1458,7 @@ namespace
       }
       LoopInfo* parent_info = nodeMap.find(access_op.getIndex())->getSecond();
       Value tensor = mapInputIntoLoop(access_op.getTensor(), parent_info);
-      auto dim = access_op.getDim();
+      auto dim = access_op.getLevel();
 
       Value access_crd = parent_info->getCrd(rewriter);
       Value access_pos = parent_info->getPos(rewriter, tensor, dim);
@@ -1468,11 +1468,11 @@ namespace
         if(format == TensorFormatEnum::D)
         {
           // TODO: This is incorrect, deal with reordering!!!!
-          if(access_op.getPrevDim()) {
+          if(access_op.getPrevLevel()) {
             auto loc = access_op.getLoc();
             auto index_type = rewriter.getIndexType();
             Value dim_size = rewriter.create<tensorAlgebra::SpTensorGetDimSize>(loc, index_type, tensor, rewriter.getI32IntegerAttr(dim));
-            Value pos_start = rewriter.create<arith::MulIOp>(loc, index_type, dim_size, access_op.getPrevDim());
+            Value pos_start = rewriter.create<arith::MulIOp>(loc, index_type, dim_size, access_op.getPrevLevel());
             access_pos = rewriter.create<arith::AddIOp>(loc, index_type, pos_start, access_pos);
           }
         }
@@ -1616,7 +1616,7 @@ namespace
             });
             return convertZeroMaskOp(op, rewriter);
           })
-          .Case<IndexTreeIndexToTensorOp>([&](IndexTreeIndexToTensorOp op) {
+          .Case<IndexTreeIndexToLevelOp>([&](IndexTreeIndexToLevelOp op) {
             LLVM_DEBUG({
               logger.startLine() << "Converting: " << op <<  "\n";
             });

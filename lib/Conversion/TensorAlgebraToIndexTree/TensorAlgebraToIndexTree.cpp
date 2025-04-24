@@ -324,7 +324,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
   for (size_t i = 0; i < lhsMap.getNumResults(); i++)
   {
     auto expr = lhsMap.getResult(i);
-    IndexTreeIndexToTensorOp access_op = rewriter.create<IndexTreeIndexToTensorOp>(
+    IndexTreeIndexToLevelOp access_op = rewriter.create<IndexTreeIndexToLevelOp>(
       loc,
       TypeRange({access_type, access_type}),
       lhs_tensor,
@@ -339,7 +339,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
 
     if(mask_tensor != nullptr)
     {
-      IndexTreeIndexToTensorOp access_op = rewriter.create<IndexTreeIndexToTensorOp>(
+      IndexTreeIndexToLevelOp access_op = rewriter.create<IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({access_type, access_type}),
         mask_tensor,
@@ -375,7 +375,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
   for (size_t i = 0; i < affineMap.getNumResults(); i++)
   {
     auto expr = affineMap.getResult(i);
-    IndexTreeIndexToTensorOp access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+    IndexTreeIndexToLevelOp access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
       loc,
       TypeRange({access_type, access_type}),
       rhs1_tensor,
@@ -398,7 +398,7 @@ mlir::LogicalResult generalIndexOperationRewrite(
   for (size_t i = 0; i < affineMap.getNumResults(); i++)
   {
     auto expr = affineMap.getResult(i);
-    IndexTreeIndexToTensorOp access_op = rewriter.create<IndexTreeIndexToTensorOp>(
+    IndexTreeIndexToLevelOp access_op = rewriter.create<IndexTreeIndexToLevelOp>(
       loc,
       TypeRange({access_type, access_type}),
       rhs2_tensor,

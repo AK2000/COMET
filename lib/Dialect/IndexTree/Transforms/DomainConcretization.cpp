@@ -58,17 +58,17 @@ struct ConcretizeTensorDomain :  public OpRewritePattern<IndexTreeTensorDomainOp
 
   mlir::LogicalResult 
   liftAccessOp(mlir::Operation *dependent_op, 
-               IndexTreeIndexToTensorOp access_op) const {
+               IndexTreeIndexToLevelOp access_op) const {
     if(access_op->isBeforeInBlock(dependent_op))
       return success();
 
     Value prev_access_value;
-    if((prev_access_value = access_op.getPrevDim()))
+    if((prev_access_value = access_op.getPrevLevel()))
     {
       if(mlir::failed(
             liftAccessOp(
               dependent_op,
-              llvm::cast<IndexTreeIndexToTensorOp>(prev_access_value.getDefiningOp())
+              llvm::cast<IndexTreeIndexToLevelOp>(prev_access_value.getDefiningOp())
             )
           ))
         return failure();
@@ -136,13 +136,13 @@ struct ConcretizeTensorDomain :  public OpRewritePattern<IndexTreeTensorDomainOp
             // Infer parent index variable
             for(Operation* use : index_op->getUsers())
             {
-              IndexTreeIndexToTensorOp access_op = llvm::dyn_cast<indexTree::IndexTreeIndexToTensorOp>(use);
-              if(!access_op || access_op.getTensor() != tensor || access_op.getDim() != dim)
+              IndexTreeIndexToLevelOp access_op = llvm::dyn_cast<indexTree::IndexTreeIndexToLevelOp>(use);
+              if(!access_op || access_op.getTensor() != tensor || access_op.getLevel() != dim)
                 continue;
 
-              parent = access_op.getPrevDim();
-              IndexTreeIndexToTensorOp prev_access_op = 
-                llvm::cast<indexTree::IndexTreeIndexToTensorOp>(parent.getDefiningOp());
+              parent = access_op.getPrevLevel();
+              IndexTreeIndexToLevelOp prev_access_op = 
+                llvm::cast<indexTree::IndexTreeIndexToLevelOp>(parent.getDefiningOp());
               if(mlir::failed(this->liftAccessOp(domain_op, prev_access_op)))
                 return failure();
 
@@ -182,13 +182,13 @@ struct ConcretizeTensorDomain :  public OpRewritePattern<IndexTreeTensorDomainOp
           // Infer parent index variable
           for(Operation* use : index_op->getUsers())
           {
-            IndexTreeIndexToTensorOp access_op = llvm::dyn_cast<indexTree::IndexTreeIndexToTensorOp>(use);
-            if(!access_op || access_op.getTensor() != tensor || access_op.getDim() != dim)
+            IndexTreeIndexToLevelOp access_op = llvm::dyn_cast<indexTree::IndexTreeIndexToLevelOp>(use);
+            if(!access_op || access_op.getTensor() != tensor || access_op.getLevel() != dim)
               continue;
 
-            parent = access_op.getPrevDim();
-            IndexTreeIndexToTensorOp prev_access_op = 
-              llvm::cast<indexTree::IndexTreeIndexToTensorOp>(parent.getDefiningOp());
+            parent = access_op.getPrevLevel();
+            IndexTreeIndexToLevelOp prev_access_op = 
+              llvm::cast<indexTree::IndexTreeIndexToLevelOp>(parent.getDefiningOp());
             if(mlir::failed(this->liftAccessOp(domain_op, prev_access_op)))
               return failure();
 
@@ -494,7 +494,7 @@ struct InferOutputDomains : public OpRewritePattern<IndexTreeSparseTensorOp> {
       Value new_parent_domain = nullptr;
       if(sparse_domain_op.getParent())
       {
-        auto index_to_tensor_op = sparse_domain_op.getParent().getDefiningOp<IndexTreeIndexToTensorOp>();
+        auto index_to_tensor_op = sparse_domain_op.getParent().getDefiningOp<IndexTreeIndexToLevelOp>();
         auto index_var = index_to_tensor_op.getIndex().getDefiningOp<IndexTreeIndicesOp>();
         if(index_vars.find(index_var) == index_vars.end()){
           new_parent_domain = copyDomain(index_var.getDomain(), rewriter, map, loc, index_vars);
@@ -586,7 +586,7 @@ struct InferOutputDomains : public OpRewritePattern<IndexTreeSparseTensorOp> {
     llvm::SmallDenseMap<Value, Value> index_vars;
     domains.resize(dims);
     for(Value crd : crds){
-      auto access_op = llvm::dyn_cast<IndexTreeIndexToTensorOp>(crd.getDefiningOp());
+      auto access_op = llvm::dyn_cast<IndexTreeIndexToLevelOp>(crd.getDefiningOp());
       if(access_op == nullptr){
         return failure();
       }
@@ -597,7 +597,7 @@ struct InferOutputDomains : public OpRewritePattern<IndexTreeSparseTensorOp> {
 
       Value domain = index_op.getDomain();
       index_vars.insert(std::make_pair(index_op.getResult(), domain));
-      domains[access_op.getDim()] = domain;
+      domains[access_op.getLevel()] = domain;
     }
 
     // Successfully matched! Cannot fail after this point.

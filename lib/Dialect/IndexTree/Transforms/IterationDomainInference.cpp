@@ -81,7 +81,7 @@ struct InferIndexDomain : public OpRewritePattern<IndexTreeIndicesOp> {
     llvm::SmallPtrSet<Operation*, 4> compute_ops;
     for(Operation* tensor_access_op : op->getUsers())
     {
-      if(!llvm::isa<indexTree::IndexTreeIndexToTensorOp>(tensor_access_op))
+      if(!llvm::isa<indexTree::IndexTreeIndexToLevelOp>(tensor_access_op))
         continue;
 
       comet_pdump(tensor_access_op);
@@ -91,8 +91,8 @@ struct InferIndexDomain : public OpRewritePattern<IndexTreeIndicesOp> {
           continue;
 
         comet_pdump(operand_op);
-        auto tensor_val = llvm::cast<indexTree::IndexTreeIndexToTensorOp>(tensor_access_op).getTensor();
-        unsigned dim = llvm::cast<indexTree::IndexTreeIndexToTensorOp>(tensor_access_op).getDim();
+        auto tensor_val = llvm::cast<indexTree::IndexTreeIndexToLevelOp>(tensor_access_op).getTensor();
+        unsigned dim = llvm::cast<indexTree::IndexTreeIndexToLevelOp>(tensor_access_op).getLevel();
         comet_vdump(tensor_val);
         comet_debug() << "dim: " << dim << "\n";
         Value domain;

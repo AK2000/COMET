@@ -108,9 +108,9 @@ struct TransformSparseOutput : public OpRewritePattern<IndexTreeComputeOp> {
       return failure();
 
     // Check to see if there are "redundant" inserts
-    llvm::SmallDenseMap<Value, IndexTreeIndexToTensorOp> index_vars;
+    llvm::SmallDenseMap<Value, IndexTreeIndexToLevelOp> index_vars;
     for(auto pos : lhs_op.getPos()) {
-      auto index_to_tensor = pos.getDefiningOp<IndexTreeIndexToTensorOp>();
+      auto index_to_tensor = pos.getDefiningOp<IndexTreeIndexToLevelOp>();
       if(index_to_tensor){
         index_vars.insert(std::make_pair(
           index_to_tensor.getIndex(),
@@ -131,12 +131,12 @@ struct TransformSparseOutput : public OpRewritePattern<IndexTreeComputeOp> {
     // Find output dimensions after reduction variable
     // to include in workspace
     unsigned workspace_rank = 0;
-    llvm::SmallVector<IndexTreeIndexToTensorOp> accesses;
+    llvm::SmallVector<IndexTreeIndexToLevelOp> accesses;
     llvm::SmallVector<int32_t> dims;
     while(index_vars.find(parent) != index_vars.end()){
       auto access_op = index_vars[parent];
       accesses.push_back(access_op);
-      dims.push_back(access_op.getDim());
+      dims.push_back(access_op.getLevel());
       workspace_rank++;
 
       parent = node.getParent();
@@ -181,7 +181,7 @@ struct TransformSparseOutput : public OpRewritePattern<IndexTreeComputeOp> {
     Value prev_dim = nullptr;
     for(auto access_op : accesses)
     {
-      auto new_access_op = rewriter.create<IndexTreeIndexToTensorOp>(
+      auto new_access_op = rewriter.create<IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({index_type, index_type}),
         clean_workspace,
@@ -220,7 +220,7 @@ struct TransformSparseOutput : public OpRewritePattern<IndexTreeComputeOp> {
     prev_dim = nullptr;
     for(auto access_op : accesses)
     {
-      auto new_access_op = rewriter.create<IndexTreeIndexToTensorOp>(
+      auto new_access_op = rewriter.create<IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({index_type, index_type}),
         new_workspace,
@@ -285,7 +285,7 @@ struct MoveInvariantComputeOp : public OpRewritePattern<IndexTreeComputeOp> {
     llvm::SmallDenseSet<Value> used_indices;
     IndexTreeLHSOperandOp lhs_op = compute_op.getLhs().getDefiningOp<IndexTreeLHSOperandOp>();
     for(auto pos : lhs_op.getPos()) {
-      auto index_to_tensor = pos.getDefiningOp<IndexTreeIndexToTensorOp>();
+      auto index_to_tensor = pos.getDefiningOp<IndexTreeIndexToLevelOp>();
       if(!index_to_tensor)
         return failure();
       used_indices.insert(index_to_tensor.getIndex());
@@ -295,7 +295,7 @@ struct MoveInvariantComputeOp : public OpRewritePattern<IndexTreeComputeOp> {
     for(Value rhs : rhs_operands) {
       IndexTreeOperandOp operand_op = rhs.getDefiningOp<IndexTreeOperandOp>();
       for(auto pos : operand_op.getPos()) {
-        auto index_to_tensor = pos.getDefiningOp<IndexTreeIndexToTensorOp>();
+        auto index_to_tensor = pos.getDefiningOp<IndexTreeIndexToLevelOp>();
         if(!index_to_tensor)
           return failure();
         used_indices.insert(index_to_tensor.getIndex());

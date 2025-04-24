@@ -743,7 +743,7 @@ Value insertSparseTensorDeclOp(PatternRewriter & rewriter,
         {
           comet_debug() << " used in it.Operand op\n";
         }
-        else if (isa<indexTree::IndexTreeIndexToTensorOp>(u1))
+        else if (isa<indexTree::IndexTreeIndexToLevelOp>(u1))
         {
           comet_debug() << " used in it.TensorAccess op\n";
         }

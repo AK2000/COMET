@@ -25,6 +25,7 @@
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/BuiltinTypeInterfaces.td"
 include "comet/Dialect/TensorAlgebra/IR/TABase.td"
+include "comet/Dialect/TensorAlgebra/IR/TAAttrs.td"
 
 class TensorAlgebra_Type<string name, string typeMnemonic, list<Trait> traits = []>
     : TypeDef<TA_Dialect, name, traits> {
@@ -48,9 +49,9 @@ def SparseTensor : TensorAlgebra_Type<"SparseTensor", "sparse_tensor", [DeclareT
     let parameters = (ins
         "::mlir::Type":$element_type,
         "::mlir::IntegerType":$indices_type,
-        ArrayRefParameter<"int64_t", "Dimensions of tensor">:$levels,
+        ArrayRefParameter<"int64_t", "Levels of tensors">:$levels,
         ArrayRefParameter<"TensorFormatEnum", "Format">:$format,
-        OptionalArrayRefOfArrayRefParameter<"int64_t", dim_to_levels>
+        OptionalArrayRefOfArrayRefParameter<"int64_t", "Mapping of dimensions to levels">:$dim_to_levels
     );
 
     // let assemblyFormat = "`<` $element_type `,` $indices_type `,` $levels `,` $format `>`";

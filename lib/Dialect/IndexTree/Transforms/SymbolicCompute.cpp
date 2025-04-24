@@ -116,7 +116,7 @@ struct CreateSymbolicTree :  public OpRewritePattern<IndexTreeSparseTensorOp> {
         }
         
         
-        auto tensor_access_op = rewriter.create<IndexTreeIndexToTensorOp>(
+        auto tensor_access_op = rewriter.create<IndexTreeIndexToLevelOp>(
                                   loc,
                                   TypeRange({rewriter.getIndexType(), rewriter.getIndexType()}),
                                   tensor,

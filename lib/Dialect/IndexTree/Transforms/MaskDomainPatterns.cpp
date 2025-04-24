@@ -54,18 +54,18 @@ struct MoveInvariantMaskOp : public mlir::OpRewritePattern<IndexTreeFillMaskOp> 
 
     mlir::LogicalResult 
     liftAccessOp(mlir::Operation *dependent_op, 
-                 IndexTreeIndexToTensorOp access_op,
+                 IndexTreeIndexToLevelOp access_op,
                  mlir::PatternRewriter &rewriter ) const {
       if(access_op->isBeforeInBlock(dependent_op))
         return success();
   
       Value prev_access_value;
-      if((prev_access_value = access_op.getPrevDim()))
+      if((prev_access_value = access_op.getPrevLevel()))
       {
         if(mlir::failed(
               liftAccessOp(
                 dependent_op,
-                llvm::cast<IndexTreeIndexToTensorOp>(prev_access_value.getDefiningOp()),
+                llvm::cast<IndexTreeIndexToLevelOp>(prev_access_value.getDefiningOp()),
                 rewriter
               )
             ))
@@ -109,7 +109,7 @@ struct MoveInvariantMaskOp : public mlir::OpRewritePattern<IndexTreeFillMaskOp> 
         return;
       })
       .Case<IndexTreeSparseDomainOp>([&](IndexTreeSparseDomainOp op) {
-        auto access = op.getParent().getDefiningOp<IndexTreeIndexToTensorOp>();
+        auto access = op.getParent().getDefiningOp<IndexTreeIndexToLevelOp>();
         used_indices.insert(access.getIndex());
         return;
       })
@@ -171,7 +171,7 @@ struct MoveInvariantMaskOp : public mlir::OpRewritePattern<IndexTreeFillMaskOp> 
       rewriter.modifyOpInPlace(domain, [&](){domain->moveBefore(op);});
       IndexTreeSparseDomainOp sparse_domain;
       if((sparse_domain = llvm::dyn_cast<IndexTreeSparseDomainOp>(domain))){
-        if (mlir::failed(liftAccessOp(sparse_domain, llvm::cast<IndexTreeIndexToTensorOp>(sparse_domain.getParent().getDefiningOp()), rewriter))) {
+        if (mlir::failed(liftAccessOp(sparse_domain, llvm::cast<IndexTreeIndexToLevelOp>(sparse_domain.getParent().getDefiningOp()), rewriter))) {
           return failure();
         }
       }

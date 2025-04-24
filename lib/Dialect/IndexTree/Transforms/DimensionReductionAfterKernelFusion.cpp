@@ -330,10 +330,10 @@ Value createNewLHSOperandOp(Value computeOp,
       ++dim_i;
       continue;
     }
-    IndexTreeIndexToTensorOp tensorDimOp = llvm::cast<IndexTreeIndexToTensorOp>(posOp.getDefiningOp());
+    IndexTreeIndexToLevelOp tensorDimOp = llvm::cast<IndexTreeIndexToLevelOp>(posOp.getDefiningOp());
     Value index_node = tensorDimOp.getIndex();
-    uint32_t dim = tensorDimOp.getDim() - num_common_indices;
-    auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+    uint32_t dim = tensorDimOp.getLevel() - num_common_indices;
+    auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({access_type, access_type}),
         lhs_tensor,
@@ -436,10 +436,10 @@ llvm::SmallVector<Value> createNewRHSOperandOps(Value prev_old_compute_op,
       ++dim_i;
       continue;
     }
-    IndexTreeIndexToTensorOp tensorDimOp = llvm::cast<IndexTreeIndexToTensorOp>(posOp.getDefiningOp());
+    IndexTreeIndexToLevelOp tensorDimOp = llvm::cast<IndexTreeIndexToLevelOp>(posOp.getDefiningOp());
     Value index_node = tensorDimOp.getIndex();
-    uint32_t dim = tensorDimOp.getDim() - num_common_indices;
-    auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+    uint32_t dim = tensorDimOp.getLevel() - num_common_indices;
+    auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
         loc,
         TypeRange({access_type, access_type}),
         /*lhs_tensor=*/intermediate_tensor,
@@ -494,9 +494,9 @@ llvm::SmallVector<Value> createExtraIndicesOpsForReset(Value prev_old_compute_op
   /// Domain: previous ComputeOp -> LHSOperandOp -> IndexToTensorDim -> IndexOp -> DenseDomainOp
   auto prev_compute_op = llvm::cast<IndexTreeComputeOp>(prev_old_compute_op.getDefiningOp());
   auto lhs_operand_op = llvm::cast<IndexTreeLHSOperandOp>(prev_compute_op.getLhs().getDefiningOp());
-  llvm::SmallVector<IndexTreeIndexToTensorOp> index_to_tensor_dim_ops;
+  llvm::SmallVector<IndexTreeIndexToLevelOp> index_to_tensor_dim_ops;
   for (Value pos : lhs_operand_op.getPos()) {
-    index_to_tensor_dim_ops.push_back(llvm::cast<IndexTreeIndexToTensorOp>(pos.getDefiningOp()));
+    index_to_tensor_dim_ops.push_back(llvm::cast<IndexTreeIndexToLevelOp>(pos.getDefiningOp()));
   }
   llvm::SmallVector<IndexTreeIndicesOp> indices_ops;
   for (auto index_to_tensor_dim : index_to_tensor_dim_ops) {
@@ -554,11 +554,11 @@ Value createComputeOpForReset(const llvm::SmallVector<Value> &common_indices,
     auto access_type = rewriter.getIndexType();
     uint32_t index_i = 0;
     for (Value posOp : new_rhs_operand_op.getPos()) {
-      IndexTreeIndexToTensorOp tensorDimOp = llvm::cast<IndexTreeIndexToTensorOp>(posOp.getDefiningOp());
+      IndexTreeIndexToLevelOp tensorDimOp = llvm::cast<IndexTreeIndexToLevelOp>(posOp.getDefiningOp());
 //      Value index_node = tensorDimOp.getIndex();
-      uint32_t dim = tensorDimOp.getDim();
+      uint32_t dim = tensorDimOp.getLevel();
       Value index_node = new_indices_ops[index_i++];
-      auto access_op = rewriter.create<indexTree::IndexTreeIndexToTensorOp>(
+      auto access_op = rewriter.create<indexTree::IndexTreeIndexToLevelOp>(
           loc,
           TypeRange({access_type, access_type}),
           /*lhs_tensor=*/intermediate_tensor,

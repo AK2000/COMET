@@ -904,7 +904,7 @@ namespace
             ret_tensor_type = mlir::RankedTensorType::get(result_dims, result_type);
           } else {
             std::vector format_array = getFormats(out_format, result_dims.size(), builder.getContext());
-            ret_tensor_type = SparseTensorType::get(builder.getContext(), result_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), result_dims, format_array);
+            ret_tensor_type = SparseTensorType::get(builder.getContext(), result_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), result_dims, format_array, llvm::ArrayRef<llvm::ArrayRef<int64_t>>());
           }
         }
         else if (formats[0].compare("CSR") == 0)
@@ -913,7 +913,7 @@ namespace
           {
             formats.push_back("CSR");
             std::vector format_array = getFormats("CSR", result_dims.size(), builder.getContext());
-            ret_tensor_type = SparseTensorType::get(builder.getContext(), result_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), result_dims, format_array);
+            ret_tensor_type = SparseTensorType::get(builder.getContext(), result_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), result_dims, format_array, llvm::ArrayRef<llvm::ArrayRef<int64_t>>());
           }
           else if(formats[1].compare("Dense") == 0)
           {
@@ -1428,7 +1428,7 @@ namespace
             element_type  = builder.getIntegerType(64);
             break;
         }
-        auto sp_tensor_type = SparseTensorType::get(builder.getContext(), element_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), dims_sizes, format);
+        auto sp_tensor_type = SparseTensorType::get(builder.getContext(), element_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), dims_sizes, format, llvm::ArrayRef<llvm::ArrayRef<int64_t>>());
         value = builder.create<SparseTensorDeclOp>(loc(tensordecl.loc()),
                                                    sp_tensor_type, labels, false);
         comet_debug() << "MLIRGen SparseTensorDeclaration creation\n";
@@ -1648,8 +1648,8 @@ namespace
         ArrayRef<TensorFormatEnum> format = SparseTensorT.getFormat();
         mlir::ShapedType shapedT = mlir::cast<mlir::ShapedType>(rhs_tensor.getType());
         mlir::Type element_type = shapedT.getElementType();
-        return_type = SparseTensorType::get(builder.getContext(), element_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), shape, format);
-        auto sp_tensor_type = SparseTensorType::get(builder.getContext(), element_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), shape, format);
+        return_type = SparseTensorType::get(builder.getContext(), element_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), shape, format, llvm::ArrayRef<llvm::ArrayRef<int64_t>>());
+        auto sp_tensor_type = SparseTensorType::get(builder.getContext(), element_type, builder.getIntegerType(defaultSpTensorIndiceBitWidth), shape, format, llvm::ArrayRef<llvm::ArrayRef<int64_t>>());
         
         /// BoolAttr is true to speficy SparseTensorDeclOp is for temporaries
         lhs_tensor = builder.create<SparseTensorDeclOp>(loc(transpose.loc()), sp_tensor_type, indices, builder.getBoolAttr(true));
