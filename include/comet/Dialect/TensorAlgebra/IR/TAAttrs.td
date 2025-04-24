@@ -28,4 +28,15 @@ def TAFormatArrayAttr : TypedArrayAttrBase<TAFormatEnum, "Format array"> {
   let constBuilderCall = "$_builder.getI32ArrayAttr($0)";
 }
 
+// For ArrayRefs which contain things which allocate themselves.
+class OptionalArrayRefOfArrayRefParameter<string arrayOf, string desc> :
+    OptionalParameter<"::llvm::ArrayRef<::llvm::ArrayRef<" # arrayOf # ">>", desc> {
+  let allocator = [{
+    llvm::SmallVector<llvm::SmallVector<}] # arrayOf # [{, 4>, 4> tmpFields;
+    for (size_t i = 0, e = $_self.size(); i < e; ++i)
+      tmpFields.push_back(ArrayRef<}] # arrayOf # [{>($_allocator.copyInto($_self[i])));
+    $_dst = $_allocator.copyInto(ArrayRef<ArrayRef<}] # arrayOf # [{>>(tmpFields));
+  }];
+}
+
 #endif //TA_ATTRS

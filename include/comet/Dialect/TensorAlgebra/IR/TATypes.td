@@ -48,11 +48,12 @@ def SparseTensor : TensorAlgebra_Type<"SparseTensor", "sparse_tensor", [DeclareT
     let parameters = (ins
         "::mlir::Type":$element_type,
         "::mlir::IntegerType":$indices_type,
-        ArrayRefParameter<"int64_t", "Dimensions of tensor">:$dims,
-        ArrayRefParameter<"TensorFormatEnum", "Format">:$format
+        ArrayRefParameter<"int64_t", "Dimensions of tensor">:$levels,
+        ArrayRefParameter<"TensorFormatEnum", "Format">:$format,
+        OptionalArrayRefOfArrayRefParameter<"int64_t", dim_to_levels>
     );
 
-    // let assemblyFormat = "`<` $element_type `,` $indices_type `,` $dims `,` $format `>`";
+    // let assemblyFormat = "`<` $element_type `,` $indices_type `,` $levels `,` $format `>`";
     let hasCustomAssemblyFormat = 1;
     // TODO: Implement custom builder from "common" format strings into format strings
 }

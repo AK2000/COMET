@@ -347,7 +347,7 @@ def DomainGetSize : IndexTree_Op<"DomainGetSize", [Pure]>{
   let results = (outs Index:$result);
 }
 
-def IndexTreeIndexToTensorOp : IndexTree_Op<"IndexToTensorDim", [Pure]>{
+def IndexTreeIndexToDimOp : IndexTree_Op<"IndexToTensorDim", [Pure]>{
   let summary = "";
   let description = [{}];
 
@@ -356,6 +356,22 @@ def IndexTreeIndexToTensorOp : IndexTree_Op<"IndexToTensorDim", [Pure]>{
     IndexTree_IndexNodeType:$index,
     UI32Attr:$dim,
     Optional<Index>:$prev_dim
+  );
+
+  let results = (outs
+    IndexTree_TensorAccessType:$result
+  );
+}
+
+def IndexTreeIndexToLevelOp : IndexTree_Op<"IndexToTensorLevel", [Pure]>{
+  let summary = "";
+  let description = [{}];
+
+  let arguments = (ins 
+  TA_AnyTensor:$tensor, 
+    IndexTree_IndexNodeType:$index,
+    UI32Attr:$level,
+    Optional<Index>:$prev_level
   );
 
   let results = (outs

@@ -55,11 +55,11 @@ namespace mlir {
 }
 
 struct SymbolicDomain {
-  Value pos_size;
+  Value pos_size; // index
   Value pos_alloc_size;
   Value crd_size;
   Value dim_size;
-  Value pos;
+  Value pos; //index array
   Value mark_array;
 };
 
